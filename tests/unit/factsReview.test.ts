@@ -2,6 +2,7 @@ import "dotenv/config";
 import assert from "node:assert/strict";
 import { prisma } from "../../src/lib/prisma";
 import { buildFactRows, enqueueFacts } from "../../src/lib/factsReview";
+import { translatedListAligned } from "../../src/lib/entityTranslations";
 
 // Очередь фактов на проверку (lib/factsReview.ts, раздел /admin/facts).
 // Таблица разбора — чистая; постановка в очередь — интеграционно, фикстурный
@@ -24,6 +25,16 @@ assert.deepEqual(
   [{ original: "A fact", en: "A fact", ru: "" }, { original: null, en: "New one", ru: "" }],
   "русского у нас не было — перевод пустой и у наших",
 );
+
+// ---------- витрина: построчный перевод ----------
+const art = { translations: { ru: { trivia: ["Любит кошек", "", "лишняя"] } } };
+assert.deepEqual(
+  translatedListAligned(art, "trivia", ["Likes cats", "Plays bass"], "ru"),
+  ["Любит кошек", "Plays bass"],
+  "непереведённый факт — оригиналом, лишние строки перевода не показываются",
+);
+assert.deepEqual(translatedListAligned(art, "trivia", ["Likes cats"], "en"), ["Likes cats"]);
+assert.deepEqual(translatedListAligned({}, "trivia", ["A"], "ru"), ["A"], "перевода нет вовсе — оригинал");
 
 // ---------- постановка в очередь ----------
 const MARK = "factsq-test";

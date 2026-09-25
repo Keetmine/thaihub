@@ -15,6 +15,7 @@ import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
+import FactsRowsField, { type FactPair } from "./FactsRowsField";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import DatePickerInput from "@/components/DatePickerInput";
 
@@ -106,7 +107,7 @@ export default function PerformerForm({
     mbti?: string;
     signatureUrl?: string;
     mvAppearances?: string;
-    trivia?: string;
+    triviaRows?: FactPair[];
     links: PerformerLinkInput[];
   };
   /** Pre-filled band member ids, for editing an existing BAND performer. */
@@ -566,15 +567,9 @@ export default function PerformerForm({
                 className="form-control"
               />
             </div>
-            <div className="col-12 col-md-6">
-              <label className="form-label" htmlFor="performer-form-trivia">Факты</label>
-              <textarea id="performer-form-trivia"
-                name="trivia"
-                rows={3}
-                defaultValue={v?.trivia}
-                placeholder="По одному факту на строку"
-                className="form-control"
-              />
+            <div className="col-12">
+              <span className="form-label d-block">Факты</span>
+              <FactsRowsField initial={v?.triviaRows ?? []} />
             </div>
           </div>
         </FormSection>

@@ -28,16 +28,21 @@ export default function TranslationEditor({
   /** Готовые значения перевода для сущностей, чьи переводы лежат
    *  КОЛОНКАМИ, а не в json (сериал: titleRu/synopsisRu). */
   values,
+  omit = [],
 }: {
   entity: TranslatableEntity;
   id: string;
   original: Record<string, string | string[] | null | undefined>;
   translations?: unknown;
   values?: Record<string, string | null | undefined>;
+  /** Поля, которые правятся в другом месте (факты артиста — в его
+   *  форме, строка к строке). Их нет в форме — и сохранение их не
+   *  трогает (см. saveEntityTranslations). */
+  omit?: string[];
 }) {
   const ru: Record<string, string | string[] | null | undefined> =
     values ?? parseTranslations(translations).ru ?? {};
-  const fields = TRANSLATABLE_FIELDS[entity];
+  const fields = TRANSLATABLE_FIELDS[entity].filter((f) => !omit.includes(f.name));
 
   const asText = (value: string | string[] | null | undefined): string =>
     Array.isArray(value) ? value.join("\n") : (value ?? "");

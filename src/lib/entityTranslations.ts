@@ -135,6 +135,24 @@ export function translatedList(
 }
 
 /**
+ * Список, переведённый ПОСТРОЧНО: русская строка N — перевод строки N
+ * оригинала (факты артиста — правка владельца 2026-09-26). Строка без
+ * перевода показывается оригиналом, а не пропадает: иначе на русской
+ * странице факт, который ещё не перевели, исчезал бы совсем.
+ */
+export function translatedListAligned(
+  entity: { translations?: unknown },
+  field: string,
+  original: string[],
+  locale: Locale,
+): string[] {
+  if (locale === "en") return original;
+  const value = parseTranslations(entity.translations)[locale]?.[field];
+  const ru = Array.isArray(value) ? value : [];
+  return original.map((en, i) => (typeof ru[i] === "string" && ru[i].trim() ? ru[i] : en));
+}
+
+/**
  * Значения формы перевода → колонки таблицы. Нужно там, где переводы
  * лежат НЕ в json, а настоящими колонками (сериал: titleRu/synopsisRu).
  *

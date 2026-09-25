@@ -1,7 +1,8 @@
 import { JsonLd, pageMetadata, personJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { pairingNames } from "@/lib/pairingLabel";
 import { getContentDict } from "@/lib/contentDictionary.server";
-import { translatedList, translatedText } from "@/lib/entityTranslations";
+import { translatedList,
+  translatedListAligned, translatedText } from "@/lib/entityTranslations";
 import AppLink from "@/components/AppLink";
 import PosterRow from "@/components/PosterRow";
 import BackLink from "@/components/BackLink";
@@ -166,7 +167,9 @@ export default async function PerformerPage({
   const bio = translatedText(performer, "bio", performer.bio, locale);
   const placeOfBirth = translatedText(performer, "placeOfBirth", performer.placeOfBirth, locale);
   const soloDebut = translatedText(performer, "soloDebut", performer.soloDebut, locale);
-  const trivia = translatedList(performer, "trivia", performer.trivia, locale);
+  // Факты переведены построчно: непереведённый показывается оригиналом
+  // (правка владельца 2026-09-26), а не пропадает с русской страницы.
+  const trivia = translatedListAligned(performer, "trivia", performer.trivia, locale);
   const mvAppearances = translatedList(performer, "mvAppearances", performer.mvAppearances, locale);
   // Фото, а если его нет — обложка последнего релиза (см.
   // lib/performerPhoto.ts). Альбомы уже загружены выше, отсортированы по

@@ -32,13 +32,14 @@ export default function FactsTable({ id, initial, decided }: { id: string; initi
     start(async () => {
       const r = await applyFacts(id, rows.map(({ en, ru }) => ({ en, ru })));
       if (!r.ok) setError(r.error ?? "Не применилось");
-      else router.refresh();
+      // Разобрано — обратно к списку (правка владельца 2026-09-26).
+      else router.push("/admin/facts");
     });
   }
   function reject() {
     start(async () => {
       await rejectFacts(id);
-      router.refresh();
+      router.push("/admin/facts");
     });
   }
 
@@ -115,8 +116,8 @@ export default function FactsTable({ id, initial, decided }: { id: string; initi
           </div>
           {missingRu > 0 && (
             <p className="small text-secondary mt-2 mb-0">
-              Перевод не обязателен: факт без перевода на русской странице не
-              покажется, пока его не переведут.
+              Перевод не обязателен: на русской странице факт без перевода
+              покажется на английском, пока его не переведут.
             </p>
           )}
           {error && <p className="small text-danger mt-2 mb-0">{error}</p>}

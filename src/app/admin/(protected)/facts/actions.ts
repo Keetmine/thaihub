@@ -19,7 +19,7 @@ export async function applyFacts(
     .filter((r) => r.en || r.ru);
   // Перевод не обязателен (правка владельца 2026-09-26): пустая строка
   // держит выравнивание списков по номеру, а на русской странице такой
-  // факт просто не показывается (translatedList отбрасывает пустые).
+  // факт показывается оригиналом (translatedListAligned).
   const noEn = clean.findIndex((r) => !r.en && r.ru);
   if (noEn >= 0) return { ok: false, error: `У факта №${noEn + 1} есть перевод, но нет английского` };
   try {

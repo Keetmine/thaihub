@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -243,6 +244,34 @@ function getAgencyIds(formData: FormData): string[] {
 /** Поля профиля музыканта (приходят импортом с tpop.fandom, но теперь
  *  правятся и руками): списки — через запятую, «факты»/«клипы» — по
  *  строке на пункт. */
+/**
+ * Факты парами из формы (FactsRowsField): `triviaEn` / `triviaRu` по
+ * одному на строку, в одном порядке. Строки без английского
+ * выбрасываются вместе со своим переводом — пара неразрывна.
+ */
+function getTriviaPairs(formData: FormData): { en: string[]; ru: string[] } {
+  const en = formData.getAll("triviaEn").map((v) => String(v).replace(/\s+/g, " ").trim());
+  const ru = formData.getAll("triviaRu").map((v) => String(v).replace(/\s+/g, " ").trim());
+  const outEn: string[] = [];
+  const outRu: string[] = [];
+  en.forEach((e, i) => {
+    if (!e) return;
+    outEn.push(e);
+    outRu.push(ru[i] ?? "");
+  });
+  return { en: outEn, ru: outRu };
+}
+
+/** Русские факты — в json переводов, выровненными с английскими;
+ *  нет ни одного перевода — ключ убираем, остальное в json не трогаем. */
+function withTriviaTranslation(current: unknown, ru: string[]): Prisma.InputJsonValue {
+  const tr = ((current && typeof current === "object" ? current : {}) as Record<string, Record<string, unknown>>);
+  const ruBlock = { ...(tr.ru ?? {}) };
+  if (ru.some((v) => v)) ruBlock.trivia = ru;
+  else delete ruBlock.trivia;
+  return { ...tr, ru: ruBlock } as Prisma.InputJsonValue;
+}
+
 function getMusicProfileFields(formData: FormData) {
   const csv = (key: string) =>
     String(formData.get(key) ?? "")
@@ -266,7 +295,7 @@ function getMusicProfileFields(formData: FormData) {
     mbti: text("mbti")?.toUpperCase() ?? null,
     signatureUrl: text("signatureUrl"),
     mvAppearances: lines("mvAppearances"),
-    trivia: lines("trivia"),
+    trivia: formData.has("triviaEn") ? getTriviaPairs(formData).en : lines("trivia"),
   };
 }
 
@@ -302,6 +331,9 @@ export async function createPerformer(formData: FormData) {
       bio: bio || null,
       photoUrl: photoUrl || null,
       ...getMusicProfileFields(formData),
+      ...(formData.has("triviaEn")
+        ? { translations: withTriviaTranslation(null, getTriviaPairs(formData).ru) }
+        : {}),
       links: {
         create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind, group: l.group ?? null })),
       },
@@ -473,6 +505,10 @@ export async function updatePerformer(id: string, formData: FormData) {
               // заготовок — про «не открывали ни разу», а не про полноту полей.
               stub: false,
               ...getMusicProfileFields(formData),
+              // Русские факты — рядом с английскими, тем же порядком.
+              ...(formData.has("triviaEn")
+                ? { translations: withTriviaTranslation(before?.translations, getTriviaPairs(formData).ru) }
+                : {}),
               links: {
                 create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind, group: l.group ?? null })),
               },

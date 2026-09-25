@@ -9941,3 +9941,27 @@ a.profile-friend-more:hover {
   resize: vertical;
   field-sizing: content;
 }
+
+/* Факты в форме артиста: номер · английский · перевод · кнопки. */
+.facts-pair {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: start;
+}
+.facts-pair-num {
+  padding-top: 0.45rem;
+  text-align: right;
+}
+.facts-pair-tools {
+  display: flex;
+  gap: 0.1rem;
+}
+@media (max-width: 767.98px) {
+  .facts-pair {
+    grid-template-columns: 1.4rem 1fr auto;
+  }
+  .facts-pair > textarea:nth-of-type(2) {
+    grid-column: 2 / 3;
+  }
+}
