@@ -37,10 +37,10 @@ export async function GET(req: NextRequest): Promise<Response> {
     return new NextResponse("Not found", { status: 404 });
   }
   // Хосты постеров черновиков: TTM, thaistarx.com, Ticketmelon (свой
-  // домен и их S3-бакет), AllTicket (atkmedia) — один прокси, чтобы
-  // очередь не хотлинкала чужие картинки напрямую.
+  // домен и их S3-бакет), AllTicket (atkmedia), a-ara.co.jp — один
+  // прокси, чтобы очередь не хотлинкала чужие картинки напрямую.
   const host = parsed.hostname.toLowerCase();
-  const allowed = ["thaiticketmajor.com", "thaistarx.com", "ticketmelon.com", "allticket.com", "tm-prod-event-files-v3.s3.ap-southeast-1.amazonaws.com"].some(
+  const allowed = ["thaiticketmajor.com", "thaistarx.com", "ticketmelon.com", "allticket.com", "a-ara.co.jp", "tm-prod-event-files-v3.s3.ap-southeast-1.amazonaws.com"].some(
     (h) => host === h || host.endsWith(`.${h}`),
   );
   if (parsed.protocol !== "https:" || !allowed) {

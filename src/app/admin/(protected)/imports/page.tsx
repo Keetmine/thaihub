@@ -43,6 +43,7 @@ import TabRunsJournal from "./TabRunsJournal";
 import TtmImportFlow from "./ttm/TtmImportFlow";
 import MusicFestivalUrlImport from "./MusicFestivalUrlImport";
 import { startThaiStarXArchiveCrawl } from "./thaiStarXActions";
+import { startAaraArchiveCrawl } from "./aaraActions";
 import { startTicketmelonFullCrawl } from "./ticketSiteActions";
 import CrawlerRows from "./CrawlerRows";
 import { listJobs } from "@/lib/scheduledJobs";
@@ -702,6 +703,11 @@ export default async function AdminImportsPage({
                 ),
                 "thaistarx-crawl": (
                   <form action={startThaiStarXArchiveCrawl}>
+                    <SubmitButton label="Обойти архив" busyLabel="Запускаем…" className="btn btn-sm btn-primary" />
+                  </form>
+                ),
+                "aara-crawl": (
+                  <form action={startAaraArchiveCrawl}>
                     <SubmitButton label="Обойти архив" busyLabel="Запускаем…" className="btn btn-sm btn-primary" />
                   </form>
                 ),

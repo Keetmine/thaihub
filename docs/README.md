@@ -24,6 +24,7 @@ something changes, edit the doc in place rather than appending a note.
   - [events.md](features/events.md) — events, multi-day, presale, ICS export + subscribe feed, location linkage
   - [ttm-crawl.md](features/ttm-crawl.md) — краулер афиши ThaiTicketMajor: черновики событий с артистами из каталога, очередь на одобрение
   - [thaistarx-crawl.md](features/thaistarx-crawl.md) — краулер трекера thaistarx.com: фан-события тайских артистов по миру черновиками в ту же очередь, состав из тегов, дочитка с TTM, часовой пояс площадки
+  - [aara-crawl.md](features/aara-crawl.md) — краулер a-ara.co.jp: японская афиша тайских артистов черновиками в ту же очередь, разбор размеченной таблицы события, отбор по каталогу, архив с 2024 года
   - [ticket-site-crawl.md](features/ticket-site-crawl.md) — краулеры Ticketmelon (карта сайта), AllTicket (концертный раздел через браузер, WAF) и tickets-easy (тайская афиша, без времени): черновики в ту же очередь, артисты ищутся в тексте события
   - [gmmtv-mascots-import.md](features/gmmtv-mascots-import.md) — недельный краулер маскотов с вики GMMTV (официальный MediaWiki API): черновики маскотов с владельцами из каталога, очередь на одобрение
   - [musicfestival-import.md](features/musicfestival-import.md) — суточный краулер фестивалей musicfestival.in.th: события создаются сразу со всем лайнапом, неизвестные артисты — заготовками; разовый импорт прошедших

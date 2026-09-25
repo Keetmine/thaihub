@@ -236,9 +236,11 @@
     [tpop-agency-import.md](tpop-agency-import.md)) и YouTube Music
     ([youtube-music-import.md](youtube-music-import.md));
   - «События» — событие по ссылке и фестиваль по ссылке, список обходов
-    афиш (musicfestival.in.th, ThaiTicketMajor, ThaiStarX, Ticketmelon,
-    AllTicket — см. [musicfestival-import.md](musicfestival-import.md),
+    афиш (musicfestival.in.th, ThaiTicketMajor, ThaiStarX, a-ara,
+    Ticketmelon, AllTicket — см.
+    [musicfestival-import.md](musicfestival-import.md),
     [ttm-crawl.md](ttm-crawl.md), [thaistarx-crawl.md](thaistarx-crawl.md),
+    [aara-crawl.md](aara-crawl.md),
     [ticket-site-crawl.md](ticket-site-crawl.md)) и общая очередь
     черновиков, на вкладке счётчик ждущих;
   - «Маскоты» — очередь черновиков недельного краулера маскотов с вики
@@ -646,6 +648,7 @@
 «Маскоты GMMTV» (gmmtv-mascots-import.md), «Фестивали» (суточный
 обход musicfestival.in.th, см. musicfestival-import.md), «ThaiStarX»
 (суточный обход трекера фан-событий по миру, см. thaistarx-crawl.md),
+«a-ara» (суточный обход японского промоутера, см. aara-crawl.md),
 «Ticketmelon» и «AllTicket» (обходы афиш без размеченного состава, см.
 ticket-site-crawl.md) и
 «Чистка» (просроченные сессии/токены и ротация журналов).

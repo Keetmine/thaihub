@@ -470,6 +470,34 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "aara-crawl",
+    group: "events",
+    title: "a-ara: японская афиша",
+    description:
+      "Обходит a-ara.co.jp — японского промоутера, который возит тайских артистов на " +
+      "фанмиты, фансайны и концерты в Токио и Осаку, — и кладёт новые события " +
+      "черновиками в очередь на проверку (вкладка «События» в импортах). Само в афишу " +
+      "ничего не попадает. Берём только тех, кто уже есть в нашем каталоге: корейские и " +
+      "тайваньские гастроли того же промоутера отсеиваются сами, а не совпавшее " +
+      "перепроверяется раз в неделю — каталог растёт. Карточки допродаж («Benefit», " +
+      "«VIP») событиями не считаются: у них на странице нет таблицы с датой. Японское " +
+      "время подставляется зоной события. Архив (всё прошедшее с 2024 года) забирается " +
+      "разово кнопкой на странице импортов.",
+    supportsTargets: false,
+    logKind: "aara-crawl",
+    logsItems: true,
+    run: async () => {
+      const { runAaraCrawl, summarizeAaraCrawl } = await import("@/lib/aaraCrawl");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "aara-crawl",
+        (runId) => runAaraCrawl({ listing: "recent", runId }),
+        summarizeAaraCrawl,
+      );
+      return result ? summarizeAaraCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "ticketmelon-crawl",
     group: "events",
     title: "Ticketmelon: обход афиши",
