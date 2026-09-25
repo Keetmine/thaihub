@@ -96,15 +96,21 @@ export async function saveEntityTranslations(formData: FormData): Promise<void> 
   const all = parseTranslations(row.translations);
   const ru: Record<string, string | string[]> = {};
   for (const field of TRANSLATABLE_FIELDS[entity]) {
-    // Поля, которого в форме нет вовсе, не трогаем — переносим как было.
-    // Факты артиста правятся в форме артиста строка к строке (правка
-    // владельца 2026-09-26), и вкладка перевода их не показывает: без
-    // этого каждое её сохранение стирало бы русские факты.
+    // Поля, которого в форме нет вовсе, не трогаем — переносим как было
+    // (у артиста без фактов построчных полей перевода нет — и стирать
+    // его старый перевод из-за этого нельзя).
     if (!formData.has(`ru:${field.name}`)) {
       const kept = all.ru?.[field.name];
       if (kept != null && kept !== "" && !(Array.isArray(kept) && kept.length === 0)) {
         ru[field.name] = kept as string | string[];
       }
+      continue;
+    }
+    // Построчный перевод: поле на каждую строку оригинала, пустые строки
+    // держат выравнивание по номеру (на витрине там будет оригинал).
+    if (field.aligned) {
+      const lines = formData.getAll(`ru:${field.name}`).map((v) => String(v).replace(/\s+/g, " ").trim());
+      if (lines.some(Boolean)) ru[field.name] = lines;
       continue;
     }
     const raw = String(formData.get(`ru:${field.name}`) ?? "").trim();

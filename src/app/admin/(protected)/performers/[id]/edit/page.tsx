@@ -168,13 +168,8 @@ export default async function EditPerformerPage({
             mbti: performer.mbti ?? "",
             signatureUrl: performer.signatureUrl ?? "",
             mvAppearances: performer.mvAppearances.join("\n"),
-            // Факты — парами «английский | русский» (правка владельца
-            // 2026-09-26): русский список выровнен с английским по номеру.
-            triviaRows: (() => {
-              const ru =
-                ((performer.translations as { ru?: { trivia?: string[] } } | null)?.ru?.trivia ?? []) as string[];
-              return performer.trivia.map((en, i) => ({ en, ru: ru[i] ?? "" }));
-            })(),
+            // Факты — одним полем, перевод — во вкладке «Перевод».
+            trivia: performer.trivia.join("\n"),
             // kind обязателен: по нему форма раскладывает ссылки на
             // соцсети, прочие и бренды. Без него бренд приезжал бы в
             // «другие ссылки» и сохранением превращался в обычную.
@@ -229,8 +224,6 @@ export default async function EditPerformerPage({
                     soloDebut: performer.soloDebut,
                   }}
                   translations={performer.translations}
-                  // Факты переводятся в самой форме, строка к строке.
-                  omit={["trivia"]}
                 />
               ),
             },

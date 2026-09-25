@@ -5,9 +5,10 @@
 A plain heart/bookmark toggle, one join table per entity type
 (`FavoritePerformer`, `FavoriteAgency` — see
 [data-model.md](../data-model.md)). Toggle UI: `FavoriteButton.tsx`,
-server actions in `src/app/(public)/favorites/actions.ts`. The heart in
-the header and the «Избранное» item in the mobile drawer lead to
-`/artists#favorites` — the pinned favourites section of the artist list.
+server actions in `src/app/(public)/favorites/actions.ts`. There is no
+heart in the header or the mobile drawer (removed 2026-09-26 together
+with event favorites): favourite artists live in the pinned section at
+the top of `/artists`.
 
 **Dramas deliberately don't have a favorite/heart** — `FavoriteDrama` was
 removed (migration `remove_favorite_drama`) since watch status already

@@ -2,7 +2,7 @@ import "dotenv/config";
 import assert from "node:assert/strict";
 import { prisma } from "../../src/lib/prisma";
 import { buildFactRows, enqueueFacts } from "../../src/lib/factsReview";
-import { translatedListAligned } from "../../src/lib/entityTranslations";
+import { realignTranslations, translatedListAligned } from "../../src/lib/entityTranslations";
 
 // Очередь фактов на проверку (lib/factsReview.ts, раздел /admin/facts).
 // Таблица разбора — чистая; постановка в очередь — интеграционно, фикстурный
@@ -35,6 +35,18 @@ assert.deepEqual(
 );
 assert.deepEqual(translatedListAligned(art, "trivia", ["Likes cats"], "en"), ["Likes cats"]);
 assert.deepEqual(translatedListAligned({}, "trivia", ["A"], "ru"), ["A"], "перевода нет вовсе — оригинал");
+
+// ---------- перевод едет за строкой, а не за номером ----------
+assert.deepEqual(
+  realignTranslations(["Likes cats", "Plays bass"], ["Любит котов", "Играет на басу"], ["New fact", "Plays bass", "likes  cats", "Changed"]),
+  ["", "Играет на басу", "Любит котов", ""],
+  "вставка сверху и перестановка не сдвигают переводы; новая строка — без перевода",
+);
+assert.deepEqual(
+  realignTranslations(["A", "A"], ["А1", "А2"], ["A", "A", "A"]),
+  ["А1", "А2", ""],
+  "одинаковые строки забирают переводы по очереди",
+);
 
 // ---------- постановка в очередь ----------
 const MARK = "factsq-test";

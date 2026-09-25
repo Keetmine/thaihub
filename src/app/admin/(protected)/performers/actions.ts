@@ -9,6 +9,7 @@ import { socialLinkKey, SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/li
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
 import { rankedPerformerSearch } from "@/lib/performerSearch";
+import { realignTranslations } from "@/lib/entityTranslations";
 
 
 
@@ -245,27 +246,19 @@ function getAgencyIds(formData: FormData): string[] {
  *  правятся и руками): списки — через запятую, «факты»/«клипы» — по
  *  строке на пункт. */
 /**
- * Факты парами из формы (FactsRowsField): `triviaEn` / `triviaRu` по
- * одному на строку, в одном порядке. Строки без английского
- * выбрасываются вместе со своим переводом — пара неразрывна.
+ * Факты правятся одним полем, по факту на строку (правка владельца
+ * 2026-09-26: пары полей неудобны, когда вставляешь длинный текст). Их
+ * перевод живёт во вкладке «Перевод» построчно; здесь он только едет
+ * вслед за своими строками, если английский список поменялся
+ * (`realignTranslations`), — иначе вставка строки сдвинула бы переводы
+ * на чужие факты. Нет ни одного перевода — ключ убираем, остальное в
+ * json не трогаем.
  */
-function getTriviaPairs(formData: FormData): { en: string[]; ru: string[] } {
-  const en = formData.getAll("triviaEn").map((v) => String(v).replace(/\s+/g, " ").trim());
-  const ru = formData.getAll("triviaRu").map((v) => String(v).replace(/\s+/g, " ").trim());
-  const outEn: string[] = [];
-  const outRu: string[] = [];
-  en.forEach((e, i) => {
-    if (!e) return;
-    outEn.push(e);
-    outRu.push(ru[i] ?? "");
-  });
-  return { en: outEn, ru: outRu };
-}
-
-/** Русские факты — в json переводов, выровненными с английскими;
- *  нет ни одного перевода — ключ убираем, остальное в json не трогаем. */
-function withTriviaTranslation(current: unknown, ru: string[]): Prisma.InputJsonValue {
-  const tr = ((current && typeof current === "object" ? current : {}) as Record<string, Record<string, unknown>>);
+function withRealignedTrivia(current: unknown, oldEn: string[], newEn: string[]): Prisma.InputJsonValue | undefined {
+  const tr = (current && typeof current === "object" ? current : {}) as Record<string, Record<string, unknown>>;
+  const oldRu = Array.isArray(tr.ru?.trivia) ? (tr.ru.trivia as string[]) : [];
+  if (oldRu.length === 0) return undefined;
+  const ru = realignTranslations(oldEn, oldRu, newEn);
   const ruBlock = { ...(tr.ru ?? {}) };
   if (ru.some((v) => v)) ruBlock.trivia = ru;
   else delete ruBlock.trivia;
@@ -295,7 +288,7 @@ function getMusicProfileFields(formData: FormData) {
     mbti: text("mbti")?.toUpperCase() ?? null,
     signatureUrl: text("signatureUrl"),
     mvAppearances: lines("mvAppearances"),
-    trivia: formData.has("triviaEn") ? getTriviaPairs(formData).en : lines("trivia"),
+    trivia: lines("trivia"),
   };
 }
 
@@ -331,9 +324,6 @@ export async function createPerformer(formData: FormData) {
       bio: bio || null,
       photoUrl: photoUrl || null,
       ...getMusicProfileFields(formData),
-      ...(formData.has("triviaEn")
-        ? { translations: withTriviaTranslation(null, getTriviaPairs(formData).ru) }
-        : {}),
       links: {
         create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind, group: l.group ?? null })),
       },
@@ -505,10 +495,15 @@ export async function updatePerformer(id: string, formData: FormData) {
               // заготовок — про «не открывали ни разу», а не про полноту полей.
               stub: false,
               ...getMusicProfileFields(formData),
-              // Русские факты — рядом с английскими, тем же порядком.
-              ...(formData.has("triviaEn")
-                ? { translations: withTriviaTranslation(before?.translations, getTriviaPairs(formData).ru) }
-                : {}),
+              // Русские факты едут за своими строками (см. withRealignedTrivia).
+              ...(() => {
+                const translations = withRealignedTrivia(
+                  before?.translations,
+                  before?.trivia ?? [],
+                  getMusicProfileFields(formData).trivia,
+                );
+                return translations ? { translations } : {};
+              })(),
               links: {
                 create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind, group: l.group ?? null })),
               },

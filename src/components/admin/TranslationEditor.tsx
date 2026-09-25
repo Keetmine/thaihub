@@ -35,9 +35,8 @@ export default function TranslationEditor({
   original: Record<string, string | string[] | null | undefined>;
   translations?: unknown;
   values?: Record<string, string | null | undefined>;
-  /** Поля, которые правятся в другом месте (факты артиста — в его
-   *  форме, строка к строке). Их нет в форме — и сохранение их не
-   *  трогает (см. saveEntityTranslations). */
+  /** Поля, которые правятся в другом месте. Их нет в форме — и
+   *  сохранение их не трогает (см. saveEntityTranslations). */
   omit?: string[];
 }) {
   const ru: Record<string, string | string[] | null | undefined> =
@@ -65,6 +64,50 @@ export default function TranslationEditor({
 
       <div className="d-flex flex-column gap-3">
         {fields.map((field) => {
+          // Построчный перевод (факты артиста): у каждой строки оригинала
+          // своё поле, как просила владелец 2026-09-26. Оригинал — текстом,
+          // а не выключенным полем: факты длинные, и в поле они резались.
+          if (field.aligned) {
+            const lines = Array.isArray(original[field.name])
+              ? (original[field.name] as string[])
+              : asText(original[field.name]).split("\n").filter((l) => l.trim());
+            const current = ru[field.name];
+            const ruLines = Array.isArray(current) ? current : [];
+            return (
+              <div key={field.name}>
+                <label className="form-label small text-secondary mb-1">
+                  {field.label} — по полю на каждый
+                </label>
+                {lines.length === 0 ? (
+                  <p className="small text-secondary mb-0">
+                    Оригинала нет — сначала заполните поле во вкладке «Основное».
+                  </p>
+                ) : (
+                  <div className="d-flex flex-column gap-2">
+                    {lines.map((line, i) => (
+                      <div key={i} className="translation-line row g-2">
+                        <div className="col-12 col-lg-6">
+                          <div className="translation-line-source small">
+                            <span className="text-secondary me-1">{i + 1}.</span>
+                            {line}
+                          </div>
+                        </div>
+                        <div className="col-12 col-lg-6">
+                          <textarea
+                            name={`ru:${field.name}`}
+                            defaultValue={ruLines[i] ?? ""}
+                            rows={2}
+                            className="form-control form-control-sm facts-input"
+                            aria-label={`${field.label} №${i + 1}: перевод`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
           const source = asText(original[field.name]);
           const value = asText(ru[field.name]);
           // Поля, которых у записи нет вовсе, показываем всё равно:

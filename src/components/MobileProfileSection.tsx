@@ -8,7 +8,6 @@ import { userHref } from "@/lib/userProfile";
 import type { ProfileMenuUser } from "./ProfileMenu";
 import {
   BellIcon,
-  HeartIcon,
   PinIcon,
   PlaneIcon,
   SettingsIcon,
@@ -67,9 +66,6 @@ const PERSONAL_ITEMS: {
   tourId?: string;
 }[] = [
   { href: "/notifications", labelKey: "notifications", icon: BellIcon },
-  // Избранное на событиях убрано (2026-09-26) — пункт ведёт к избранным
-  // артистам: их секция закреплена сверху списка.
-  { href: "/artists#favorites", labelKey: "favorites", icon: HeartIcon },
   { href: "/friends", labelKey: "friends", icon: UsersIcon },
   { href: "/trips", labelKey: "myTrips", icon: PlaneIcon, tourId: "trips" },
   { href: "/lists", labelKey: "myPlaces", icon: PinIcon },

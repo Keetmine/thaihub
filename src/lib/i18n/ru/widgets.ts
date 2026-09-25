@@ -36,6 +36,8 @@ export const widgets: Dict["widgets"] = {
     hintImage: "Изображение, до 8 МБ",
     hintPdf: "Изображение или PDF, до 8 МБ",
     remove: "Убрать",
+    recrop: "Обрезать",
+    recropFailed: "Не удалось открыть картинку для обрезки — загрузите файл заново",
   },
   crop: {
     title: "Кадрируйте фото",

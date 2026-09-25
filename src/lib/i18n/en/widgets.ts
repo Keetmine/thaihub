@@ -42,6 +42,8 @@ export const widgets = {
      *  изображение» там говорила неправду. */
     hintPdf: "Image or PDF, up to 8MB",
     remove: "Remove",
+    recrop: "Crop",
+    recropFailed: "Couldn't open the image for cropping — upload the file again",
   },
   /** Окно кадрирования своей фотографии — см. ImageCropDialog. */
   crop: {

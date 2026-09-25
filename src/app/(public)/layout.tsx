@@ -20,7 +20,7 @@ import NavDepthTracker from "@/components/NavDepthTracker";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
 import { assertNotBanned, getCurrentUser } from "@/lib/userAuth";
-import { CalendarIcon, GridIcon, HeartIcon, InfoIcon, SearchIcon } from "@/components/icons";
+import { CalendarIcon, GridIcon, InfoIcon, SearchIcon } from "@/components/icons";
 import NotificationBell, { NotificationBellProvider } from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
 import MobileProfileSection, { MobileProfileHead } from "@/components/MobileProfileSection";
@@ -202,20 +202,6 @@ export default async function PublicLayout({ children }: { children: React.React
                 >
                   <SearchIcon />
                 </Link>
-                {/* Избранное на событиях убрано (2026-09-26) — сердечко
-                    ведёт к избранным артистам: их секция закреплена
-                    сверху списка. */}
-                {user && (
-                  <Link
-                    href="/artists#favorites"
-                    prefetch={false}
-                    className="icon-btn"
-                    aria-label={t.nav.favorites}
-                    data-tooltip={t.nav.favorites}
-                  >
-                    <HeartIcon />
-                  </Link>
-                )}
                 {/* Метка тура и на десктопном колокольчике: раньше она
                     была только в мобильном блоке, querySelector находил
                     скрытый элемент — и шаг «уведомления» на десктопе

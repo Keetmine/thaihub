@@ -15,7 +15,6 @@ import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
-import FactsRowsField, { type FactPair } from "./FactsRowsField";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import DatePickerInput from "@/components/DatePickerInput";
 
@@ -112,7 +111,8 @@ export default function PerformerForm({
     mbti?: string;
     signatureUrl?: string;
     mvAppearances?: string;
-    triviaRows?: FactPair[];
+    /** Факты — по одному на строку. */
+    trivia?: string;
     links: PerformerLinkInput[];
   };
   /** Pre-filled band member ids, for editing an existing BAND performer. */
@@ -329,7 +329,7 @@ export default function PerformerForm({
             разделом, из которого пришли, и не показывается. */}
         <FormSection title="Основное">
         <div className="row g-3">
-          <div className="col-12 col-md-8 col-lg-9">
+          <div className="col-12 col-md-7 col-lg-8">
             <div className="row g-2">
               <div className={isCreating ? "col-12" : "col-12 col-lg-8"}>
                 <label className="form-label" htmlFor="performer-form-name">
@@ -493,8 +493,11 @@ export default function PerformerForm({
             </div>
           </div>
 
-          <div className="col-12 col-md-4 col-lg-3">
-            <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} compact />
+          {/* Фото крупно и с кадрированием (правка владельца 2026-09-26):
+              рамка 3:4, как на странице артиста; «Обрезать» — и у нового
+              файла, и у фото, пришедшего импортом. */}
+          <div className="col-12 col-md-5 col-lg-4">
+            <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} large recrop />
           </div>
         </div>
 
@@ -559,8 +562,9 @@ export default function PerformerForm({
               <input id="performer-form-mbti" name="mbti" defaultValue={v?.mbti} placeholder="INFP" className="form-control" />
             </div>
             <div className="col-12 col-md-6">
-              <label className="form-label" htmlFor="performer-form-signatureUrl">Автограф (адрес картинки)</label>
-              <input id="performer-form-signatureUrl" name="signatureUrl" defaultValue={v?.signatureUrl} placeholder="/uploads/signatures/….webp" className="form-control" />
+              {/* Картинка загрузкой, а не адресом (правка владельца
+                  2026-09-26). Автограф вытянут в ширину — низкая полоса. */}
+              <FileDropzone name="signatureUrl" label="Автограф" defaultValue={v?.signatureUrl} wide />
             </div>
             <div className="col-12 col-md-6">
               <label className="form-label" htmlFor="performer-form-mvAppearances">Появления в клипах</label>
@@ -576,8 +580,19 @@ export default function PerformerForm({
           </FormSection>
         )}
 
-        <FormSection title="Факты" hint="перевод — строка к строке, правится здесь, а не во вкладке «Перевод»">
-          <FactsRowsField initial={v?.triviaRows ?? []} />
+        {/* Одно поле, по факту на строку (правка владельца 2026-09-26:
+            пары полей неудобны, когда вставляешь длинный текст). Перевод
+            — во вкладке «Перевод», отдельным полем на каждый факт. */}
+        <FormSection title="Факты" hint="по одному на строку; перевод — во вкладке «Перевод»">
+          <textarea
+            id="performer-form-trivia"
+            name="trivia"
+            rows={6}
+            defaultValue={v?.trivia}
+            placeholder="Каждый факт — с новой строки"
+            className="form-control"
+            aria-label="Факты"
+          />
         </FormSection>
 
         <FormSection title="Ссылки и соцсети" hint="MyDramaList, соцсети, музыкальные площадки">

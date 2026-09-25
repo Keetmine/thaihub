@@ -39,6 +39,13 @@ export type TranslatableField = {
    * быть ФОРМА, а не таблица (правка владельца 2026-09-10).
    */
   column?: string;
+  /**
+   * Список, переведённый ПОСТРОЧНО: у каждой строки оригинала своё поле
+   * перевода, и русский список выровнен с английским по номеру (факты
+   * артиста — правка владельца 2026-09-26). Читается через
+   * `translatedListAligned`.
+   */
+  aligned?: boolean;
 };
 
 export type TranslatableEntity =
@@ -65,7 +72,7 @@ export const TRANSLATABLE_FIELDS: Record<TranslatableEntity, TranslatableField[]
   performer: [
     { name: "bio", label: "Биография", kind: "text" },
     { name: "placeOfBirth", label: "Место рождения", kind: "line" },
-    { name: "trivia", label: "Факты", kind: "list" },
+    { name: "trivia", label: "Факты", kind: "list", aligned: true },
     { name: "mvAppearances", label: "Клипы", kind: "list" },
     { name: "soloDebut", label: "Сольный дебют", kind: "line" },
   ],
@@ -150,6 +157,26 @@ export function translatedListAligned(
   const value = parseTranslations(entity.translations)[locale]?.[field];
   const ru = Array.isArray(value) ? value : [];
   return original.map((en, i) => (typeof ru[i] === "string" && ru[i].trim() ? ru[i] : en));
+}
+
+/**
+ * Перевести построчный перевод на НОВЫЙ оригинал. Факты правятся одним
+ * полем (правка владельца 2026-09-26), и вставка строки в середину
+ * сдвинула бы все переводы ниже на чужие факты. Поэтому перевод едет за
+ * ТЕКСТОМ строки, а не за её номером: строка, которая осталась как была
+ * (пусть и на другом месте), сохраняет перевод; новая или изменённая
+ * получает пустой — на витрине до перевода покажется оригинал.
+ */
+export function realignTranslations(oldOriginal: string[], oldTranslated: string[], newOriginal: string[]): string[] {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const pool = new Map<string, string[]>();
+  oldOriginal.forEach((line, i) => {
+    const ru = oldTranslated[i];
+    if (typeof ru !== "string" || !ru.trim()) return;
+    const key = norm(line);
+    pool.set(key, [...(pool.get(key) ?? []), ru]);
+  });
+  return newOriginal.map((line) => pool.get(norm(line))?.shift() ?? "");
 }
 
 /**

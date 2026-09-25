@@ -24,6 +24,13 @@ export default function FileDropzone({
   // квадрат не нужен и лишний шаг только мешает, поэтому по умолчанию
   // выключено.
   crop = false,
+  // Кнопка «Обрезать» у УЖЕ стоящей картинки: фото артистов приходят
+  // импортами какими угодно, и перекадрировать их надо без повторной
+  // загрузки файла с диска (просьба владельца 2026-09-26).
+  recrop = false,
+  // Крупная рамка 3:4 во всю ширину колонки — фото в форме артиста,
+  // где картинку надо разглядеть, а не угадать по миниатюре.
+  large = false,
   wide = false,
   ratioW,
   ratioH,
@@ -40,6 +47,8 @@ export default function FileDropzone({
   endpoint?: string;
   compact?: boolean;
   crop?: boolean;
+  recrop?: boolean;
+  large?: boolean;
   /** Полоса во всю ширину и низкая — для узких окон форм сообщества и
    *  встречи, где высокий бокс 3:4 съедает полэкрана. */
   wide?: boolean;
@@ -76,6 +85,23 @@ export default function FileDropzone({
       return;
     }
     upload(file);
+  }
+
+  /** Перекадрировать то, что уже стоит: скачиваем картинку по её адресу
+   *  и открываем то же окно кропа. Чужой сервер без CORS отдать файл
+   *  не даст — тогда честная ошибка, а не молчание. */
+  async function recropCurrent() {
+    setError(null);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      if (!blob.type.startsWith("image/")) throw new Error("not an image");
+      const base = fileName.replace(/\.[^.]+$/, "") || "image";
+      setCropFile(new File([blob], `${base}.${blob.type.split("/")[1] ?? "img"}`, { type: blob.type }));
+    } catch {
+      setError(t.widgets.file.recropFailed);
+    }
   }
 
   async function upload(file: File) {
@@ -124,8 +150,8 @@ export default function FileDropzone({
       <input id={`${uid}-input`} type="hidden" name={name} value={url} />
       <div
         className={`file-dropzone ${compact ? "file-dropzone-compact" : ""} ${
-          wide ? "file-dropzone-wide" : ""
-        } ${isDragging ? "is-dragging" : ""}`}
+          large ? "file-dropzone-large" : ""
+        } ${wide ? "file-dropzone-wide" : ""} ${isDragging ? "is-dragging" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
           setIsDragging(true);
@@ -157,17 +183,31 @@ export default function FileDropzone({
               loading="lazy"
               decoding="async" src={url} alt="" />
             )}
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm mt-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                setUrl("");
-                onUrlChange?.("");
-              }}
-            >
-              {t.widgets.file.remove}
-            </button>
+            <div className="d-flex flex-wrap justify-content-center gap-2 mt-2">
+              {recrop && !isPdf && (
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    recropCurrent();
+                  }}
+                >
+                  {t.widgets.file.recrop}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-outline-danger btn-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setUrl("");
+                  onUrlChange?.("");
+                }}
+              >
+                {t.widgets.file.remove}
+              </button>
+            </div>
           </div>
         ) : (
           <>
