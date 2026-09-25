@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { access, mkdir, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
@@ -113,6 +114,49 @@ export async function toWebp(buffer: Buffer, contentType: string): Promise<{ buf
  * фестиваль получил бы файл первого (проверка «уже на диске» — по
  * имени). Санитизируется так же, как чужое имя.
  */
+/**
+ * Как назовётся файл на нашем диске. `null` — адрес разобрать не вышло.
+ *
+ * **В имени есть отпечаток адреса**, и это не украшение. Ниже, в
+ * `downloadRemoteImage`, стоит проверка «файл с таким именем уже на
+ * диске — значит, та же картинка, скачивать не надо». Пока имя целиком
+ * бралось из чужого адреса, проверка врала: у WordPress-афиш файл
+ * называется по размеру («1050_486.jpg», «bnr_1050_486-1.jpg»), и одним
+ * таким именем на a-ara.co.jp названы постеры ШЕСТИ разных событий.
+ * Первое одобрение клало файл на диск, а все следующие получали чужую
+ * картинку — и так до конца жизни файла (жалоба владельца 2026-09-25:
+ * «одобрила несколько, все с кривой картинкой, и теперь новым событиям
+ * тоже приходит неправильная»).
+ *
+ * Хвост из sha1 адреса чинит это для ВСЕХ источников разом: тот же
+ * адрес даёт то же имя (повторно качать по-прежнему не нужно), разные
+ * адреса — разные файлы. Прежний обход — своё имя через `localBase` у
+ * каждого вызывающего — защищал только тех, кто о ловушке помнил.
+ */
+export function localImageName(
+  url: string,
+  opts: { localBase?: string } = {},
+): { base: string; withExt: string } | null {
+  let remoteName: string;
+  try {
+    // decode ДО санитизации: "%2e%2e%2f" разворачивается в "../" уже
+    // после split по "/", и без sanitizeRemoteName ушёл бы в path.join.
+    remoteName = sanitizeRemoteName(decodeURIComponent(new URL(url).pathname.split("/").pop() ?? ""));
+  } catch {
+    return null;
+  }
+  if (!remoteName) return null;
+
+  const ext = remoteName.match(/\.[a-zA-Z0-9]+$/)?.[0] ?? "";
+  let base = remoteName.replace(/\.[a-zA-Z0-9]+$/, "");
+  if (opts.localBase) {
+    const custom = sanitizeRemoteName(opts.localBase).replace(/\.[a-zA-Z0-9]+$/, "");
+    if (custom) base = custom;
+  }
+  base = `${base}-${createHash("sha1").update(url).digest("hex").slice(0, 8)}`;
+  return { base, withExt: `${base}${ext}` };
+}
+
 export async function downloadRemoteImage(
   url: string | null,
   folder: string,
@@ -120,23 +164,9 @@ export async function downloadRemoteImage(
 ): Promise<string | null> {
   if (!url) return null;
 
-  let remoteName: string;
-  try {
-    // decode ДО санитизации: "%2e%2e%2f" разворачивается в "../" уже
-    // после split по "/", и без sanitizeRemoteName ушёл бы в path.join.
-    remoteName = sanitizeRemoteName(decodeURIComponent(new URL(url).pathname.split("/").pop() ?? ""));
-  } catch {
-    return url;
-  }
-  if (!remoteName) return url;
-
-  if (opts.localBase) {
-    const ext = remoteName.match(/\.[a-zA-Z0-9]+$/)?.[0] ?? "";
-    const custom = sanitizeRemoteName(opts.localBase).replace(/\.[a-zA-Z0-9]+$/, "");
-    if (custom) remoteName = `${custom}${ext}`;
-  }
-
-  const base = remoteName.replace(/\.[a-zA-Z0-9]+$/, "");
+  const named = localImageName(url, opts);
+  if (!named) return url;
+  const { base, withExt: remoteName } = named;
   const dir = resolveInside(UPLOADS_ROOT, folder);
 
   // Проверяем обе возможные локальные версии: сконвертированную .webp и

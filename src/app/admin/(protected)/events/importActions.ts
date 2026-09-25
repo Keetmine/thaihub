@@ -303,9 +303,15 @@ export async function importMusicFestivalEvent(
 function posterLocalBase(sourceUrl: string): string | undefined {
   try {
     const u = new URL(sourceUrl.trim());
-    if (!/(^|\.)thaistarx\.com$/i.test(u.hostname)) return undefined;
+    // Раньше здесь стоял ОДИН хост (thaistarx.com), и постеры со всех
+    // остальных источников ложились под именем из чужого адреса. У
+    // a-ara.co.jp это размер картинки («1050_486.jpg»), так что разные
+    // события получали один файл. Теперь имя строится от любого хоста;
+    // от подмены страхует отпечаток адреса в downloadRemoteImage, а это
+    // просто читаемое имя на диске.
+    const host = u.hostname.replace(/^www\./i, "").split(".")[0];
     const slug = u.pathname.split("/").filter(Boolean).pop();
-    return slug ? `thaistarx-${slug}` : undefined;
+    return host && slug ? `${host}-${slug}` : undefined;
   } catch {
     return undefined;
   }
