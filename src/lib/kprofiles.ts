@@ -467,3 +467,9 @@ export function matchKpToCatalog(
       : [];
   return { performerId: null, via: "none", candidates: similar.slice(0, 5).map((r) => `${r.name}${r.realName ? ` (${r.realName})` : ""}`) };
 }
+
+/** Ключ человека в конвейере фактов: id карточки, а у новых — адрес
+ *  страницы + ник (у участников группы адрес общий). */
+export function kpPersonKey(p: { performerId: string | null; sourceUrl: string; stageName: string | null; birthName: string | null }): string {
+  return p.performerId ?? `new:${p.sourceUrl}#${(p.stageName ?? p.birthName ?? "").toLowerCase().replace(/\W+/g, "-")}`;
+}

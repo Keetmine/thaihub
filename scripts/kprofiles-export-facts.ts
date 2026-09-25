@@ -2,6 +2,7 @@ import "dotenv/config";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { prisma } from "../src/lib/prisma";
 import type { KpPerson } from "./kprofiles-match";
+import { kpPersonKey } from "../src/lib/kprofiles";
 
 /**
  * Шаг 3 разового импорта с kprofiles.com: факты → пачки для
@@ -32,10 +33,6 @@ const argv = process.argv.slice(2);
 const limitIdx = argv.indexOf("--limit");
 const LIMIT = limitIdx >= 0 ? Number(argv[limitIdx + 1]) : Infinity;
 
-/** Ключ человека в конвейере: id карточки, а у новых — адрес + ник. */
-export function kpPersonKey(p: KpPerson): string {
-  return p.performerId ?? `new:${p.sourceUrl}#${(p.stageName ?? p.birthName ?? "").toLowerCase().replace(/\W+/g, "-")}`;
-}
 
 async function main() {
   const people = JSON.parse(readFileSync(PEOPLE, "utf8")) as KpPerson[];
