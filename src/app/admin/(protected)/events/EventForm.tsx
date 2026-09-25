@@ -319,7 +319,7 @@ export default function EventForm({
                           <span key={p.id} className="event-chip performer-chip">
                             {/* Тот же вид, что у чипов мультиселекта:
                                 миниатюра + имя + «открыть». */}
-                            <LetterAvatar name={p.name} photoUrl={p.photoUrl ?? null} size={1.15} />
+                            <LetterAvatar name={p.name} photoUrl={p.photoUrl ?? null} size={2.2} />
                             {p.name}
                             <OpenEntityLink
                               href={adminEntityHref("Performer", p.id)!}
@@ -373,6 +373,7 @@ export default function EventForm({
                         options={[]}
                         searchOptions={searchPerformerOptions}
                         excludeIds={o.lineup.map((x) => x.id)}
+                        hrefKind="Performer"
                         inputClassName="form-control-sm"
                         placeholder="Добавить исполнителя в этот день…"
                         onPick={(picked) => {

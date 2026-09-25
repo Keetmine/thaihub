@@ -72,7 +72,7 @@ export default function EntityMultiSelect({
   emptyMessage,
   externalAdditions,
   searchOptions,
-  selectedVariant = "chip",
+  selectedVariant: selectedVariantProp,
   onPick,
   excludeIds,
   inputClassName,
@@ -158,6 +158,9 @@ export default function EntityMultiSelect({
     [selectedIds, allOptions],
   );
 
+  // Люди по умолчанию — крупными карточками с лицом (правка владельца
+  // 2026-09-26: «везде, где выводятся актёры, выводить больше»).
+  const selectedVariant = selectedVariantProp ?? (hrefKind === "Performer" ? "person" : "chip");
   const optionHref = (option: EntityOption) => option.href ?? (hrefKind ? adminEntityHref(hrefKind, option.id) : null);
 
   function handleQueryChange(next: string) {
@@ -331,7 +334,7 @@ export default function EntityMultiSelect({
           </div>
         )}
         {isOpen && (filtered.length > 0 || showCreateOption) && (
-          <div className="performer-combobox-dropdown">
+          <div className={`performer-combobox-dropdown ${hrefKind === "Performer" ? "is-people" : ""}`}>
             {filtered.map((o) => (
               <button
                 key={o.id}

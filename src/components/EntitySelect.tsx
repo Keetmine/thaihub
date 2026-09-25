@@ -223,7 +223,7 @@ export default function EntitySelect({
     <div>
       {label && <label className="form-label d-block" htmlFor={`${uid}-input`}>{label}</label>}
       <input id={`${uid}-input`} type="hidden" name={name} value={value} />
-      <div className="performer-select" ref={ref}>
+      <div className={`performer-select ${hrefKind === "Performer" ? "is-people" : ""}`} ref={ref}>
         <div className="entity-select-row">
           <button
             id={id}

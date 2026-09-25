@@ -444,9 +444,10 @@ export default function DramaForm({
             {cast.map((c) => (
               <div
                 key={c.id}
-                className="d-flex align-items-center gap-2 p-2 rounded-3"
-                style={{ background: "var(--bs-tertiary-bg)", border: "1px solid var(--bs-border-color)" }}
+                className="cast-row d-flex align-items-center gap-3 p-2 rounded-3"
               >
+                {/* Лицо крупно — как у участников группы (правка владельца
+                    2026-09-26). */}
                 <Avatar name={c.name} photoUrl={c.photoUrl} />
                 <span
                   className="font-display fw-medium text-white flex-shrink-0"

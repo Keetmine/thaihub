@@ -200,8 +200,10 @@
   --section-rgb: 139, 92, 246;
   /* Фокус полей внутри — цветом секции, а не общим фиолетовым. */
   --accent-rgb: var(--section-rgb);
+  /* Без overflow: hidden — он обрезал выпадающие списки комбобоксов
+     внутри секции (правка владельца 2026-09-26). Скругление полоски
+     слева держит сама полоска (маска ниже). */
   position: relative;
-  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--bs-border-radius-lg);
   background:
@@ -210,15 +212,24 @@
   padding: 1.1rem 1.3rem 1.3rem 1.45rem;
 }
 
-/* Полоска слева — цвет секции, гаснет книзу. */
+/* Полоска слева — цвет секции, гаснет книзу. Рамка-«кольцо» во всю
+   секцию с толщиной только слева: маска вырезает середину, и полоска
+   повторяет скругление углов без обрезки содержимого секции. */
 .admin-section::before {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
+  inset: -1px;
+  border-radius: inherit;
+  padding-left: 3px;
   background: linear-gradient(180deg, rgb(var(--section-rgb)), rgba(var(--section-rgb), 0.05));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
 }
 
 /* Палитра — тёплые сине-красные оттенки вокруг фиолетового акцента
