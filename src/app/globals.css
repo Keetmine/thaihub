@@ -9910,7 +9910,10 @@ a.profile-friend-more:hover {
 /* Таблица разбора фактов (/admin/facts/[id]): новая строка — зелёная,
    наша, но поправленная — жёлтая. */
 .facts-table tr.is-add > td {
-  background: rgba(46, 160, 67, 0.1);
+  /* Приглушённый (правка владельца 2026-09-26: «слишком яркий»):
+     строку отмечает в первую очередь «+» в колонке «До», фон — лишь
+     лёгкий намёк. */
+  background: rgba(46, 160, 67, 0.045);
 }
 .facts-diff-mark {
   font-family: ui-monospace, monospace;
@@ -9920,7 +9923,7 @@ a.profile-friend-more:hover {
   font-weight: 600;
 }
 .facts-table tr.is-edit > td {
-  background: rgba(210, 153, 34, 0.1);
+  background: rgba(210, 153, 34, 0.045);
 }
 
 /* Поля таблицы фактов: у form-control-sm в ячейке таблицы текст
