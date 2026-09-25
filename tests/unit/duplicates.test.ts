@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { nicknamePrefixGroups, fullNameInclusionPairs } from "../../src/lib/duplicates";
+import {
+  nicknamePrefixGroups,
+  fullNameInclusionPairs,
+  sameRealNamePairs,
+} from "../../src/lib/duplicates";
 
 // Сетка «ник приклеен к имени» на странице дублей
 // (docs/features/duplicates.md). Без базы:
@@ -133,6 +137,70 @@ assert.deepEqual(
   ]),
   [],
   "точные тёзки — не этот прогон",
+);
+
+// ---------- sameRealNamePairs: «ник» ↔ «ник + полное имя» ----------
+
+// Опора здесь — совпавшее НАСТОЯЩЕЕ имя: обход биографий с MDL
+// проставил его тысячам карточек, и давние дубли стали видны (вопрос
+// владельца 2026-09-25: «появилось 144 дубля, хотя я только разобрала»).
+const r = (id: string, name: string, realName: string | null) => ({ id, name, realName });
+const realPairsOf = (rows: ReturnType<typeof r>[]) =>
+  sameRealNamePairs(rows).pairs.map((p) => `${p.long.id}>${p.short.id}:${p.nickname}`).sort();
+const realAmbiguousOf = (rows: ReturnType<typeof r>[]) =>
+  sameRealNamePairs(rows).ambiguous.map((g) => g.rows.map((x) => x.id).sort().join("+")).sort();
+
+assert.deepEqual(
+  realPairsOf([
+    r("a", "Guide", "Kantapon Chompupan"),
+    r("b", "Guide Kantapon Chompupan", "Kantapon Chompupan"),
+  ]),
+  ["b>a:Guide"],
+  "ник и «ник + полное имя» при одном настоящем имени — пара, в живых остаётся ник",
+);
+
+// Переставленные имя и фамилия — та же пара слов, но НЕ начало: такое
+// смотрит человек, автоматом не сливаем.
+assert.deepEqual(
+  realPairsOf([r("a", "Koji Mukai", "Koji Mukai"), r("b", "Mukai Koji", "Koji Mukai")]),
+  [],
+  "перестановка слов парой не считается",
+);
+assert.deepEqual(
+  realAmbiguousOf([r("a", "Koji Mukai", "Koji Mukai"), r("b", "Mukai Koji", "Koji Mukai")]),
+  ["a+b"],
+  "и уходит в неоднозначные",
+);
+
+assert.deepEqual(
+  realPairsOf([
+    r("a", "Bow", "Nathaphop Kanjanteak"),
+    r("b", "Bow Nathaphop Kanjanteak", "Nathaphop Kanjanteak"),
+    r("c", "Atom Nathaphop Kanjanteak", "Nathaphop Kanjanteak"),
+  ]),
+  [],
+  "три карточки на одно имя прогон не трогает",
+);
+
+assert.deepEqual(
+  realPairsOf([
+    r("a", "Guide", "Kantapon Chompupan"),
+    r("b", "Guide Somchai Prasert", "Somchai Prasert"),
+  ]),
+  [],
+  "разные настоящие имена — не дубли, даже если ник совпал",
+);
+
+assert.deepEqual(
+  realPairsOf([r("a", "Min", "Kim"), r("b", "Min Kim", "Kim")]),
+  [],
+  "короткое настоящее имя опорой не служит — так «Kim» свёл бы пол-Кореи",
+);
+
+assert.deepEqual(
+  realPairsOf([r("a", "Guide", "Kantapon Chompupan"), r("b", "guide", "Kantapon Chompupan")]),
+  [],
+  "одинаковые имена — это другой случай (точные тёзки), не для этого прогона",
 );
 
 console.log("duplicates: все проверки прошли");

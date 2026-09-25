@@ -172,6 +172,71 @@ export function fullNameInclusionPairs<T extends { id: string; name: string }>(
  *  человека с ником Pond): такие группы дробятся по реальному имени,
  *  записи без реального имени при конфликте отбрасываются как
  *  неоднозначные. */
+/**
+ * Пары «ник» ↔ «ник + полное имя», сведённые по ОДИНАКОВОМУ настоящему
+ * имени: «Guide» ↔ «Guide Kantapon Chompupan».
+ *
+ * Откуда взялись: обход биографий с MyDramaList проставил `realName`
+ * тысячам карточек, и страница дублей разом показала 143 такие пары
+ * (вопрос владельца 2026-09-25: «появилось 144 дубля, хотя я только всё
+ * разобрала»). Дубли не завелись — они были давно, просто сравнивать
+ * было не с чем: у одной карточки из пары настоящее имя пустовало.
+ *
+ * Чем отличается от `fullNameInclusionPairs`: та требует, чтобы
+ * короткая запись была ПОЛНЫМ именем («Parada Thitawachira»), а здесь
+ * короткая — это ник («Guide»), и опорой служит совпавшее настоящее
+ * имя.
+ *
+ * Правило нарочно узкое, потому что дальше пары сливаются прогоном:
+ *  - настоящее имя совпадает (без учёта регистра, пробелов и дефисов) и
+ *    длиннее четырёх знаков — «Kim» свёл бы пол-Кореи;
+ *  - в группе РОВНО две карточки;
+ *  - имя короткой — начало имени длинной, пословно: «Guide» ⊂ «Guide
+ *    Kantapon…». Именно начало, а не «где-то внутри»: «Koji Mukai» ↔
+ *    «Mukai Koji» — тоже одна и та же пара слов, но переставленная, и
+ *    такое пусть смотрит человек.
+ * Всё остальное уходит в `ambiguous` и остаётся на /admin/duplicates.
+ */
+export function sameRealNamePairs<T extends { id: string; name: string; realName: string | null }>(
+  rows: T[],
+): { pairs: NicknamePair<T>[]; ambiguous: DuplicateGroup<T>[] } {
+  const byReal = new Map<string, T[]>();
+  for (const row of rows) {
+    const real = (row.realName ?? "").trim();
+    if (real.length < 5) continue;
+    const key = real.toLowerCase().replace(/[-\s]/g, "");
+    if (!byReal.has(key)) byReal.set(key, []);
+    byReal.get(key)!.push(row);
+  }
+
+  const pairs: NicknamePair<T>[] = [];
+  const ambiguous: DuplicateGroup<T>[] = [];
+  for (const [key, group] of byReal) {
+    if (group.length < 2) continue;
+    if (group.length > 2) {
+      ambiguous.push({ key: `real::${key}`, rows: group });
+      continue;
+    }
+    const [a, b] = group;
+    const ta = nameTokens(a.name);
+    const tb = nameTokens(b.name);
+    const [long, short, longTokens, shortTokens] =
+      ta.length > tb.length ? [a, b, ta, tb] : [b, a, tb, ta];
+    const isPrefix =
+      shortTokens.length > 0 &&
+      shortTokens.length < longTokens.length &&
+      shortTokens.every((t, i) => longTokens[i] === t);
+    if (!isPrefix) {
+      ambiguous.push({ key: `real::${key}`, rows: group });
+      continue;
+    }
+    // Ник — как он написан в короткой карточке: регистр и дефисы там
+    // настоящие, а не восстановленные из нормализованной строки.
+    pairs.push({ long, short, nickname: short.name.trim() });
+  }
+  return { pairs, ambiguous };
+}
+
 export async function findDuplicatePerformerGroups(): Promise<
   DuplicateGroup<{ id: string; name: string; realName: string | null; type: string; createdAt: Date; _count: { events: number; dramas: number } }>[]
 > {
