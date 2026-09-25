@@ -221,7 +221,7 @@ around it, both used in this suite:
    `duplicate-warning.spec.ts` scrapes an existing drama title off
    `/admin/dramas` rather than querying the DB for one; `favorites.spec.ts`
    verifies the favorite stuck by checking button state after a reload
-   instead of querying `FavoriteEvent`.
+   instead of querying `FavoritePerformer`.
 2. **When you genuinely need DB access** (mainly for cleanup), shell out
    to a separate `tsx` process rather than importing Prisma into the spec
    file's own module graph — see `tests/e2e/cleanup-test-user.ts` and its

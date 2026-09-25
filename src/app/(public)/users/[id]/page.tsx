@@ -292,7 +292,6 @@ export default async function UserProfilePage({
     referrals,
     muteRow,
     pendingRow,
-    favoriteEventRows,
     ticketRows,
   ] = await Promise.all([
     friendshipsPromise,
@@ -528,15 +527,8 @@ export default async function UserProfilePage({
           },
         })
       : null,
-    // Дальше — только своё: избранные события и билеты. Билеты — ТОЛЬКО
-    // себе: файл не должен попасть в чужую разметку.
-    isSelf
-      ? prisma.favoriteEvent.findMany({
-          // Та же причина, что у «иду» выше: вкладка событий — про афишу.
-          where: { userId: user.id, event: catalogEventsWhere() },
-          include: { event: eventWithOccurrences },
-        })
-      : [],
+    // Дальше — только своё: билеты. Билеты — ТОЛЬКО себе: файл не
+    // должен попасть в чужую разметку.
     isSelf
       ? prisma.eventTicket.findMany({
           where: { userId: user.id },
@@ -712,9 +704,8 @@ export default async function UserProfilePage({
   let ticketsPanel: React.ReactNode = null;
   let ticketsCount = 0;
   // Счётчик в подписи вкладки «События» для СВОЕГО профиля: столько
-  // строк лежит во всех под-табах вместе (иду по датам + избранные
-  // события). Считается из уже выбранных массивов — лишних запросов
-  // вкладке не нужно.
+  // строк лежит во всех под-табах вместе («иду» по датам). Считается из
+  // уже выбранных массивов — лишних запросов вкладке не нужно.
   let selfEventsCount = 0;
   if (isSelf) {
     const attendanceRows = attendances
@@ -722,26 +713,15 @@ export default async function UserProfilePage({
       .sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime());
     const upcomingAttendances = attendanceRows.filter((e) => e.startsAt >= now);
     const pastAttendances = attendanceRows.filter((e) => e.startsAt < now).reverse();
-    // Избранное — про событие целиком (одна строка + «+N дат»), в отличие
-    // от «иду», где отметки стоят на конкретные даты.
-    const favoriteEvents = favoriteEventRows
-      .filter((f) => f.event.occurrences.length > 0)
-      .map((f) => ({
-        row: flattenOccurrence({ ...f.event.occurrences[0], event: f.event }),
-        extraDates: f.event.occurrences.length - 1,
-      }))
-      .sort((x, y) => x.row.startsAt.getTime() - y.row.startsAt.getTime());
 
     // Считаем ДО платного гейта: у бесплатного владельца списки не
     // рендерятся, но своё количество он видеть должен — это его данные,
     // и число как раз объясняет, за что предлагается подписка.
-    selfEventsCount = attendanceRows.length + favoriteEvents.length;
+    selfEventsCount = attendanceRows.length;
 
-    // Сердечко и «иду» на строках — из уже выбранных отметок: это СВОИ
-    // события, и оба ответа целиком лежат в favoriteEventRows и
-    // attendances (обе выборки — по афишным событиям, как и строки
-    // здесь). Двух запросов «а что из этого списка отмечено» больше нет.
-    const favoritedSet = new Set(favoriteEventRows.map((f) => f.eventId));
+    // «Иду» и «возможно» на строках — из уже выбранных отметок: это
+    // СВОИ события, и оба ответа целиком лежат в attendances и maybeRows
+    // (обе выборки — по афишным событиям, как и строки здесь).
     const goingSet = new Set(attendances.map((a) => a.occurrenceId));
     const maybeSet = new Set(maybeRows.map((m) => m.occurrenceId));
 
@@ -750,9 +730,8 @@ export default async function UserProfilePage({
     const eventsLocked = !ownerPremium;
     const showUpcoming = eventsLocked ? [] : upcomingAttendances;
     const showPast = eventsLocked ? [] : pastAttendances;
-    const showFavoriteEvents = eventsLocked ? [] : favoriteEvents;
 
-    // Под-табы «Предстоящие / Прошедшие / Избранное» вместо трёх
+    // Под-табы «Предстоящие / Прошедшие» вместо
     // секций-простыней (правка владельца п.4). Пилюли — SubTabs, нарочно
     // другой стиль, чем основной ряд вкладок; пустые группы пилюль не
     // получают.
@@ -767,7 +746,6 @@ export default async function UserProfilePage({
               <EventAgendaRow
                 key={ev.occurrenceId}
                 event={ev}
-                isFavorited={favoritedSet.has(ev.id)}
                 isGoing={goingSet.has(ev.occurrenceId)}
                 isMaybe={maybeSet.has(ev.occurrenceId)}
                 showDate
@@ -786,30 +764,9 @@ export default async function UserProfilePage({
               <EventAgendaRow
                 key={ev.occurrenceId}
                 event={ev}
-                isFavorited={favoritedSet.has(ev.id)}
                 isGoing={goingSet.has(ev.occurrenceId)}
                 isMaybe={maybeSet.has(ev.occurrenceId)}
                 showDate
-              />
-            ))}
-          </div>
-        ),
-      },
-      showFavoriteEvents.length > 0 && {
-        key: "favorites",
-        label: t.account.events.tabFavorites,
-        count: showFavoriteEvents.length,
-        content: (
-          <div className="d-flex flex-column gap-3 mb-4">
-            {showFavoriteEvents.map(({ row, extraDates }) => (
-              <EventAgendaRow
-                key={row.id}
-                event={row}
-                isFavorited={favoritedSet.has(row.id)}
-                isGoing={goingSet.has(row.occurrenceId)}
-                isMaybe={maybeSet.has(row.occurrenceId)}
-                showDate
-                extraDates={extraDates}
               />
             ))}
           </div>
@@ -1001,7 +958,6 @@ export default async function UserProfilePage({
     const overviewReviews = reviews.slice(0, 3);
     const hasOverviewLeft = overviewGoing.length > 0 || overviewReviews.length > 0;
     const goingEventIds = new Set(attendances.map((a) => a.eventId));
-    const favoriteEventsCount = favoriteEventRows.length;
 
     tabs.push({
       key: "overview",
@@ -1012,7 +968,6 @@ export default async function UserProfilePage({
             <ProfileOverview
               nav={{
                 going: goingEventIds.size,
-                favoriteEvents: favoriteEventsCount,
                 favoritePerformers: favoritePerformersCount,
                 dramas: watchCount,
                 friends: friends.length,

@@ -59,42 +59,6 @@ export async function toggleFavoriteAgency(agencyId: string) {
   revalidatePath(`/agencies/${agencyId}`);
 }
 
-export async function toggleFavoriteEvent(eventId: string): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  // Добавить в избранное встречу сообщества может только тот, кто
-  // вправе её видеть — по образцу toggleGoing ниже: id угадать нельзя,
-  // но экшен вызывается напрямую, мимо любой страницы (см.
-  // lib/meetups.ts). Несуществующее событие отвечает тем же «не
-  // найдено» — и это же чинит 500 на подделанный id.
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
-    select: { communityId: true },
-  });
-  if (!event || !(await canSeeMeetup(event, user.id))) {
-    return { ok: false, error: (await getT()).t.events.errors.notFound };
-  }
-
-  const existing = await prisma.favoriteEvent.findUnique({
-    where: { userId_eventId: { userId: user.id, eventId } },
-  });
-
-  if (existing) {
-    await prisma.favoriteEvent.delete({
-      where: { userId_eventId: { userId: user.id, eventId } },
-    });
-  } else {
-    await prisma.favoriteEvent.create({
-      data: { userId: user.id, eventId },
-    });
-  }
-
-  revalidatePath("/account");
-  revalidatePath(`/event/${eventId}`);
-  return { ok: true };
-}
-
 const WATCH_STATUSES = [
   "WATCHING",
   "COMPLETED",

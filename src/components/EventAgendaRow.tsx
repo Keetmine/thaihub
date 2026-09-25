@@ -5,7 +5,6 @@ import { formatShortDate } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { eventHref } from "@/lib/eventSlug";
 import { PinIcon, UsersIcon } from "@/components/icons";
-import FavoriteButton from "@/components/FavoriteButton";
 import LetterAvatar from "@/components/LetterAvatar";
 import GoingButton from "@/components/GoingButton";
 import MaybeButton from "@/components/MaybeButton";
@@ -15,7 +14,6 @@ import { useLocale, useT } from "@/components/LocaleProvider";
 
 export default function EventAgendaRow({
   event,
-  isFavorited = false,
   isGoing = false,
   isMaybe = false,
   friendsGoing = [],
@@ -23,7 +21,6 @@ export default function EventAgendaRow({
   extraDates = 0,
 }: {
   event: EventWithPerformers;
-  isFavorited?: boolean;
   isGoing?: boolean;
   /** «Возможно пойду» на эту дату: кандидат, а не план. Карточка
    *  приглушается и получает плашку — см. MaybeButton. */
@@ -48,13 +45,14 @@ export default function EventAgendaRow({
     // понятно, что это ещё вариант (правка владельца 2026-09-15).
     <div className={`agenda-row ${isMaybe && !isGoing ? "is-maybe-row" : ""}`}>
       <div className="corner-actions corner-actions-row">
-        <span data-tour="favorite">
-          <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
-        </span>
         {/* «Возможно» — только у будущих дат: у прошедшей отмечать
-            кандидата бессмысленно, там уже либо ходили, либо нет. */}
+            кандидата бессмысленно, там уже либо ходили, либо нет.
+            data-tour: шаг тура показывает отметки карточки — раньше он
+            стоял на сердечке избранного, которого больше нет. */}
         {event.startsAt >= new Date() && (
-          <MaybeButton occurrenceId={event.occurrenceId} isMaybe={isMaybe} />
+          <span data-tour="favorite">
+            <MaybeButton occurrenceId={event.occurrenceId} isMaybe={isMaybe} />
+          </span>
         )}
         <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>

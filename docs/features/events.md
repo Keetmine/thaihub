@@ -47,7 +47,7 @@ where: { ...catalogOccurrencesWhere(), startsAt: { gte: today } }
 
 Отдельные случаи, где фильтра нет намеренно:
 
-- `getFavoritedEventIds`, `getGoingOccurrenceIds`,
+- `getGoingOccurrenceIds`, `getMaybeOccurrenceIds`,
   `getFriendsGoingByOccurrence` — они сужают уже полученный список id и
   наследуют фильтр вызывающего;
 - поиск существующего события по `sourceUrl` в импортёрах — у встречи
@@ -327,16 +327,20 @@ text field.
 
 ## «Возможно пойду» (EventMaybe)
 
-Третье состояние у даты, между сердечком-избранным («интересно вообще»,
-на событие целиком) и «иду» («решено»): кандидат. Заведено 2026-09-15
-ради поездок — см. [trips.md](trips.md), там же правила показа и
-подсчёт накладок по времени.
+Второе состояние у даты рядом с «иду» («решено»): кандидат. Заведено
+2026-09-15 ради поездок — см. [trips.md](trips.md), там же правила
+показа и подсчёт накладок по времени. С 2026-09-26 «возможно» заменяет
+и избранное у событий: сердечка у события больше нет, прежнее избранное
+с будущими датами перенесено в «возможно» (см.
+[social.md](social.md#favorites)).
 
 Коротко: отметка на occurrence, взаимоисключима с «иду» (экшены снимают
-встречную), кнопка `MaybeButton` со знаком вопроса стоит рядом с
-сердечком на карточках и у каждой будущей даты на странице события.
-**Нигде не считается** — ни в статистике, ни в ачивках, ни в
-уведомлениях, ни в ICS: это черновик планов. Состояние кнопки на
+встречную), кнопка `MaybeButton` со знаком вопроса стоит рядом с «иду»
+на карточках и у каждой будущей даты на странице события.
+**Не считается** ни в статистике, ни в ачивках, ни в ICS: это черновик
+планов. Уведомления — исключение: напоминание «уже скоро», пресейл и
+дайджест бота приходят и по «возможно», как раньше приходили по
+избранному. Состояние кнопки на
 карточках приходит общей выборкой `getMaybeOccurrenceIds`
 (`src/lib/favorites.ts`) — так же, как «иду» и избранное.
 
@@ -479,7 +483,7 @@ inline, since that's the one page worth reading closely —
 
 **Everywhere events show up as a list** — `EventCard` (home, day view,
 trip pages) and `EventAgendaRow` (performer/drama/location pages,
-search), plus the account page's going/favorited event rows — it's
+search), plus the account page's going event rows — it's
 hidden by default and shown on hover/focus instead, via `MskTimeInfo`: a
 small "i" icon (`.agenda-time-info`) whose `data-tooltip` reads "Тайское
 время. МСК: HH:MM[–HH:MM]". This keeps list rows uncluttered; the admin
@@ -743,10 +747,6 @@ http(s) (она уходит в href кнопки и в текст Telegram). С
 как на самой странице события (`isPremium || isMeetup`): участие в
 сообществе бесплатное.
 
-Избранное подпиской не ограничено: сердечко работает у любого
-залогиненного и в тизере, и на странице события — как на страницах
-артистов и сериалов.
-
 Серверное маскирование ленты никуда не делось: `fetchEventListPage`
 без подписки по-прежнему затирает поля и отдаёт только даты
 (`EventCardLocked`, разблюривать в девтулзах нечего) — см. «Premium
@@ -827,8 +827,8 @@ comes within ~600px of the viewport. Paging runs in two phases —
 "upcoming" (ascending from today) and then "past" (the archive,
 descending) — with an explicit date range collapsing to a single
 "upcoming" phase over that range, matching the pre-existing no-split
-behavior. Because pages are offset-based, the Все/Иду/Избранное filter
-is applied **in the SQL where-clause** (`attendees/favoritedBy some`)
+behavior. Because pages are offset-based, the Все/Иду/Мои артисты
+filter is applied **in the SQL where-clause** (`attendees some`, etc.)
 rather than post-filtering in JS — and «Иду» without a signed-in user
 matches nothing by an impossible condition (гостю на `?filter=going`
 раньше уезжала полная афиша; аудит 2026-09, п.1.9) — and the client dedupes rows by

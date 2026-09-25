@@ -20,7 +20,6 @@ import SocialLinkIcons from "@/components/SocialLinkIcons";
 import UploadImage from "@/components/UploadImage";
 import SubTabs from "@/components/SubTabs";
 import {
-  getFavoritedEventIds,
   getGoingOccurrenceIds,
   getMaybeOccurrenceIds,
 } from "@/lib/favorites";
@@ -267,12 +266,10 @@ export default async function PerformerPage({
   // Вторая волна: пользовательские отметки — все ждут только
   // currentUser и уже загруженные события/сериалы, между собой не
   // связаны.
-  const eventIds = performerEvents.map((ev) => ev.id);
   const occIds = performerEvents.map((ev) => ev.occurrenceId);
   const [
     seenLive,
     favorite,
-    favoritedEventIds,
     goingEventIds,
     maybeOccurrenceIds,
     statusByDramaId,
@@ -288,7 +285,6 @@ export default async function PerformerPage({
           },
         })
       : null,
-    getFavoritedEventIds(eventIds, currentUser?.id),
     getGoingOccurrenceIds(occIds, currentUser?.id),
     getMaybeOccurrenceIds(occIds, currentUser?.id),
     getDramaWatchStatuses(
@@ -1220,7 +1216,6 @@ export default async function PerformerPage({
                   <EventAgendaRow
                     key={row.id}
                     event={row}
-                    isFavorited={favoritedEventIds.has(row.id)}
                     isGoing={goingEventIds.has(row.occurrenceId)}
                     isMaybe={maybeOccurrenceIds.has(row.occurrenceId)}
                     showDate

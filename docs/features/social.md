@@ -3,16 +3,25 @@
 ## Favorites
 
 A plain heart/bookmark toggle, one join table per entity type
-(`FavoritePerformer`, `FavoriteAgency`, `FavoriteEvent` — see
+(`FavoritePerformer`, `FavoriteAgency` — see
 [data-model.md](../data-model.md)). Toggle UI: `FavoriteButton.tsx`,
-server actions in `src/app/(public)/favorites/actions.ts`. Helper reads:
-`getFavoritedEventIds()` in `src/lib/favorites.ts`.
+server actions in `src/app/(public)/favorites/actions.ts`. The heart in
+the header and the «Избранное» item in the mobile drawer lead to
+`/artists#favorites` — the pinned favourites section of the artist list.
 
 **Dramas deliberately don't have a favorite/heart** — `FavoriteDrama` was
 removed (migration `remove_favorite_drama`) since watch status already
 covers "how do I feel about this drama", and having both was redundant.
-`FavoriteKind` (`FavoriteButton.tsx`) only accepts `"performer" | "event"
-| "agency"`.
+
+**Events don't have one either** (владелец, 2026-09-26: «непонятно, для
+чего избранное, если есть „пойду“ и „возможно пойду“»). `FavoriteEvent`
+dropped by migration `20260926T02_drop_favorite_event`; before the drop
+it converted every favorite that still had a future date into
+«возможно пойду» (`EventMaybe`) on the nearest future date, unless the
+person had already marked «иду» or «возможно» on that event. Everything
+that used to read favorites now reads «возможно»: Telegram reminders
+(24 h and presale), the bot digest, the CSV export, admin counters and
+analytics. `FavoriteKind` only accepts `"performer" | "agency"`.
 
 ## «Видела вживую» — отметка у события
 
@@ -179,7 +188,7 @@ been a favorite. One UI:
 
 `getDramaWatchStatuses(dramaIds, userId)` in `src/lib/favorites.ts` batch-
 loads a `Map<dramaId, status>` for a page's rows (same shape as
-`getFavoritedEventIds`) — deliberately *not* in `src/lib/watchStatus.ts`,
+`getGoingOccurrenceIds`) — deliberately *not* in `src/lib/watchStatus.ts`,
 which stays free of any server-only import (Prisma) since the client
 component `DramaStatusButton` pulls `WATCH_STATUS_ORDER` from it. The
 labels themselves live in the dictionary (`t.catalog.watchStatus`), not
@@ -478,8 +487,7 @@ intentionally the closest existing destination rather than a dead link.
    просмотра и их счётчик, поездки, списки мест и артистов, посещённые
    места, отзывы, комментарии и их счётчик, сообщества, выданные медали,
    рефералы (только если будет пересчёт ачивок), молчалка уведомлений и
-   висящая заявка, избранные события и билеты (последние два — только
-   себе). Права зрителя зависят от дружбы, но ждать её приходится
+   висящая заявка, билеты (только себе). Права зрителя зависят от дружбы, но ждать её приходится
    ТОЛЬКО залогиненному незнакомцу: себе и гостю `isFriend` известен
    сразу, и у них запрос дружб едет в этой же волне, а не ступенью
    раньше.
@@ -505,10 +513,9 @@ referrals, unlockedRows })`, `getUnlockedAchievements(userId, rows)`.
 (`catalogEventsWhere` у отметок, видимости у поездок, `isPrivate` у
 отзывов); у каждой передачи это записано комментарием в коде.
 
-Без запроса считаются и мелочи: «сердечко/иду» на своих строках
-событий — из тех же `favoriteEvent`/`attendances`, счётчик избранных
-событий — длина массива, «досмотрено сериалов» в своде — фильтр по уже
-выбранным статусам.
+Без запроса считаются и мелочи: «иду/возможно» на своих строках
+событий — из тех же `attendances`/`maybeRows`, «досмотрено сериалов» в
+своде — фильтр по уже выбранным статусам.
 
 **Потолки выборок**: статусы 2000, поездки 200, отзывы 200,
 комментарии 30. Первые три — защита от абсурдного
@@ -841,9 +848,10 @@ MyDramaList; у событий — «иду» по датам плюс избр�
 
 ## Events tab grouping
 
-Вкладка «События» профиля показывает избранное событие **одной строкой
-со списком дат** («+N дат», `extraDates` у `EventAgendaRow`), а «иду» —
-строкой на отмеченную дату. Per-date splitting stays where lists are
+Вкладка «События» профиля — под-табы «Предстоящие / Прошедшие», по
+строке на каждую дату с «иду». Одной строкой со списком дат («+N дат»,
+`extraDates` у `EventAgendaRow`) событие выводится в поиске и на
+страницах артиста/сериала. Per-date splitting stays where lists are
 sorted by date (the home афиша, day view, calendar, trip pages). An
 event counts as upcoming until its **last** date has passed.
 

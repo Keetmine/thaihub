@@ -3,7 +3,6 @@ import { dateKey, formatTime } from "@/lib/dates";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { getT } from "@/lib/i18n";
 import {
-  getFavoritedEventIds,
   getGoingOccurrenceIds,
   getMaybeOccurrenceIds,
 } from "@/lib/favorites";
@@ -74,19 +73,15 @@ export default async function MeetupsTab({
   const zoneValue = communityZone?.timezone ?? DEFAULT_TIMEZONE;
   const timezoneLabel = TIMEZONES.find((z) => z.value === zoneValue)?.label[locale] ?? zoneValue;
 
-  // Избранное и «иду» — теми же общими выборками, что кормят афишу:
+  // «Иду» и «возможно» — теми же общими выборками, что кормят афишу:
   // карточка одна, и состояние её кнопок должно считаться одинаково.
-  const [goingIds, maybeIds, favoritedIds] = await Promise.all([
+  const [goingIds, maybeIds] = await Promise.all([
     getGoingOccurrenceIds(
       meetups.flatMap((m) => m.occurrences.map((o) => o.id)),
       viewer?.id,
     ),
     getMaybeOccurrenceIds(
       meetups.flatMap((m) => m.occurrences.map((o) => o.id)),
-      viewer?.id,
-    ),
-    getFavoritedEventIds(
-      meetups.map((m) => m.id),
       viewer?.id,
     ),
   ]);
@@ -167,7 +162,6 @@ export default async function MeetupsTab({
         communityId={communityId}
         event={event}
         values={values}
-        isFavorited={favoritedIds.has(m.id)}
         isGoing={goingIds.has(occurrence.id)}
         isMaybe={maybeIds.has(occurrence.id)}
         authorName={m.createdBy?.name ?? null}

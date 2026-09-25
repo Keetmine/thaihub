@@ -3,13 +3,12 @@
 import { useState, useTransition } from "react";
 import {
   toggleFavoriteAgency,
-  toggleFavoriteEvent,
   toggleFavoritePerformer,
 } from "@/app/(public)/favorites/actions";
 import { HeartIcon } from "@/components/icons";
 import { useT } from "@/components/LocaleProvider";
 
-export type FavoriteKind = "performer" | "event" | "agency";
+export type FavoriteKind = "performer" | "agency";
 
 // Экшен может вернуть ошибку значением `{ ok: false, error }` (текст
 // исключения в проде до клиента не доезжает) — сердечко тогда
@@ -19,7 +18,6 @@ const actionByKind: Record<
   (id: string) => Promise<void | { ok: boolean }>
 > = {
   performer: toggleFavoritePerformer,
-  event: toggleFavoriteEvent,
   agency: toggleFavoriteAgency,
 };
 

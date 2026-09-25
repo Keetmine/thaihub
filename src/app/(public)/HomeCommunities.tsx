@@ -5,7 +5,6 @@ import { viewerMeetupsWhere } from "@/lib/catalogEvents";
 import { viewerCommunitiesWhere } from "@/lib/communities";
 import { formatShortDate } from "@/lib/dates";
 import {
-  getFavoritedEventIds,
   getGoingOccurrenceIds,
   getMaybeOccurrenceIds,
 } from "@/lib/favorites";
@@ -131,19 +130,15 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
   if (occurrences.length === 0 && posts.length === 0) return null;
 
   // Состояние кнопок карточки — теми же общими выборками, что кормят
-  // афишу: карточка одна, и «иду» с сердечком должны считаться
+  // афишу: карточка одна, и «иду» с «возможно» должны считаться
   // одинаково везде. Запрос идёт по горстке уже найденных id.
-  const [goingIds, maybeIds, favoritedIds] = await Promise.all([
+  const [goingIds, maybeIds] = await Promise.all([
     getGoingOccurrenceIds(
       occurrences.map((o) => o.id),
       userId,
     ),
     getMaybeOccurrenceIds(
       occurrences.map((o) => o.id),
-      userId,
-    ),
-    getFavoritedEventIds(
-      occurrences.map((o) => o.event.id),
       userId,
     ),
   ]);
@@ -199,7 +194,6 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
                     event={event}
                     isGoing={goingIds.has(o.id)}
                     isMaybe={maybeIds.has(o.id)}
-                    isFavorited={favoritedIds.has(o.event.id)}
                   />
                 );
               })}

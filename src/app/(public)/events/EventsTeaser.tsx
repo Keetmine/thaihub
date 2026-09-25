@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import { startOfDay } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
-import { getFavoritedEventIds } from "@/lib/favorites";
 import { getT } from "@/lib/i18n";
 
 // Тизер афиши для тех, у кого нет подписки (и для гостя без аккаунта).
@@ -30,9 +29,8 @@ const OCCURRENCE_POOL = 12;
 export default async function EventsTeaser({
   userId,
 }: {
-  /** Залогиненный без подписки — чтобы сердечки в тизере показывали
-   *  настоящее состояние (избранное подпиской не ограничено). Гость —
-   *  null, ему вместо кабинетных подсказок нужен вход. */
+  /** Гость — null: ему внизу тизера нужны кнопки входа, а не оплата.
+   *  Залогиненному без подписки они не показываются. */
   userId: string | null;
 }) {
   const { t } = await getT();
@@ -62,11 +60,6 @@ export default async function EventsTeaser({
     .slice(0, TEASER_SIZE)
     .map(flattenOccurrence);
 
-  const favoritedIds = await getFavoritedEventIds(
-    rows.map((r) => r.id),
-    userId ?? undefined,
-  );
-
   return (
     <div className="d-flex flex-column gap-4">
       {rows.length > 0 && (
@@ -77,7 +70,6 @@ export default async function EventsTeaser({
               <EventAgendaRow
                 key={row.occurrenceId}
                 event={row}
-                isFavorited={favoritedIds.has(row.id)}
                 showDate
               />
             ))}

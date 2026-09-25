@@ -89,8 +89,8 @@ export const widgets = {
   tour: {
     eventsTitle: "The event feed",
     eventsText: "Every concert and fan meet, by date, with the line-up and the venue. The nearest events are open to everyone as a teaser; the full feed comes with the subscription.",
-    favTitle: "Favourites and “going”",
-    favText: "The heart saves an event, “going” marks that you'll be there — then a reminder comes, and friends can see you're planning to go.",
+    favTitle: "“Maybe” and “going”",
+    favText: "“Maybe” keeps an event as an option, “going” marks that you'll be there — then a reminder comes, and friends can see you're planning to go.",
     artistsTitle: "Artists and groups",
     artistsText: "Profiles, series and concerts for each of them. From here you can add someone to favourites, to a list of your own, or mark that you've seen them live.",
     seriesTitle: "Series",

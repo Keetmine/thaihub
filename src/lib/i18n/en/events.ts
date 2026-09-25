@@ -10,7 +10,6 @@ export const events = {
     openCalendar: "Open the calendar",
     tabAll: "All",
     tabGoing: "I'm going",
-    tabFavorites: "Favourites",
     tabArtists: "My artists",
     tabCommunities: "Communities",
     searchPlaceholder: "Search by title…",

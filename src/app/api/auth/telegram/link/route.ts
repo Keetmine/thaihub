@@ -26,7 +26,7 @@ async function linkTelegram(params: URLSearchParams, search: string) {
       name: true,
       _count: {
         select: {
-          favoriteEvents: true,
+          eventMaybes: true,
           favoritePerformers: true,
           trips: true,
           eventAttendances: true,
@@ -52,7 +52,7 @@ async function linkTelegram(params: URLSearchParams, search: string) {
         // страницы, а он известен попапу, а не этой ручке.
         losses: {
           performers: existing._count.favoritePerformers,
-          events: existing._count.favoriteEvents,
+          events: existing._count.eventMaybes,
           attendances: existing._count.eventAttendances,
           trips: existing._count.trips,
         },

@@ -45,7 +45,6 @@ const getEventsWatermarkNames = unstable_cache(
         select: { title: true },
         orderBy: [
           { attendees: { _count: "desc" } },
-          { favoritedBy: { _count: "desc" } },
           { createdAt: "desc" },
         ],
         take: WATERMARK_NAME_LIMIT,
@@ -55,7 +54,7 @@ const getEventsWatermarkNames = unstable_cache(
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
-type EventFilter = "all" | "going" | "favorited" | "artists" | "communities";
+type EventFilter = "all" | "going" | "artists" | "communities";
 
 export default async function HomePage({
   searchParams,
@@ -137,13 +136,11 @@ export default async function HomePage({
     ? "all"
     : rawFilter === "going"
       ? "going"
-      : rawFilter === "favorited"
-        ? "favorited"
-        : rawFilter === "artists"
-          ? "artists"
-          : rawFilter === "communities"
-            ? "communities"
-            : "all";
+      : rawFilter === "artists"
+        ? "artists"
+        : rawFilter === "communities"
+          ? "communities"
+          : "all";
 
   const from = activeTrip ? dateKey(activeTrip.startDate) : isValidDateKey(rawFrom) ? rawFrom! : "";
   const to = activeTrip ? dateKey(activeTrip.endDate) : isValidDateKey(rawTo) ? rawTo! : "";
@@ -210,13 +207,6 @@ export default async function HomePage({
             className={`tab-bar-item ${filter === "going" ? "active" : ""}`}
           >
             {t.events.list.tabGoing}
-          </AppLink>
-          <AppLink
-            href={`/events?filter=favorited${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "favorited" ? "active" : ""}`}
-          >
-            {t.events.list.tabFavorites}
           </AppLink>
           <AppLink
             href={`/events?filter=artists${rangeQuery}`}

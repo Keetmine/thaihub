@@ -13,22 +13,19 @@ function runDbScript(script: string, email: string) {
   });
 }
 
-test("a new user can sign up and favorite an event", async ({ page }) => {
+// Избранное у событий убрано (2026-09-26: его закрывают «иду» и
+// «возможно пойду»), сердечко осталось у артистов — его и проверяем.
+test("a new user can sign up and favorite an artist", async ({ page }) => {
   const email = `smoke-fav-${Date.now()}@example.com`;
   const password = "smoketest123";
 
   try {
     await signupTestUser(page, email, password);
-    // События — платная функция: без подписки на главной только
-    // locked-карточки без ссылок, избранное недоступно.
-    runDbScript("set-premium-test-user.ts", email);
 
-    // Афиша переехала с главной на /events: на "/" теперь сводка
-    // («что нового», ближайшее), а список событий — здесь.
-    await page.goto("/events");
-    const firstEventLink = page.locator('a[href^="/event/"]').first();
-    test.skip((await firstEventLink.count()) === 0, "no events in the database to favorite");
-    await Promise.all([page.waitForURL(/\/event\//), firstEventLink.click()]);
+    await page.goto("/artists");
+    const firstArtistLink = page.locator('a[href^="/artists/"]').first();
+    test.skip((await firstArtistLink.count()) === 0, "no artists in the database to favorite");
+    await Promise.all([page.waitForURL(/\/artists\/[^/]+$/), firstArtistLink.click()]);
 
     await page.getByRole("button", { name: "Add to favourites" }).click();
     await expect(page.getByRole("button", { name: "Remove from favourites" })).toBeVisible();

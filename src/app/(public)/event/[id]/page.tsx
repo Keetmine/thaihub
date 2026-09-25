@@ -12,7 +12,6 @@ import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
 import { canSeeMeetup } from "@/lib/meetups";
 import { getFriendIds } from "@/lib/friends";
-import FavoriteButton from "@/components/FavoriteButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import EventDayLineup, { type LineupDay } from "@/components/EventDayLineup";
 import CastGrid from "@/components/CastGrid";
@@ -235,7 +234,6 @@ export default async function EventDetailPage({
   // заметки, «друзья идут», напоминание о препродаже и выгрузка в
   // календарь (маршрут /ics и сам отвечает 403 без подписки).
   const isPremium = isPremiumActive(currentUser);
-  let isEventFavorited = false;
   let goingOccurrenceIds: string[] = [];
   /** Свои «возможно пойду» по датам этого события — кандидаты, а не план. */
   let maybeOccurrenceIds: string[] = [];
@@ -247,12 +245,7 @@ export default async function EventDetailPage({
   // Пусто — глазиков нет вовсе: не залогинен или не был ни на одной
   // прошедшей дате.
   let seenState = new Map<string, SeenEntry>();
-  // Избранное — бесплатное: сердечко работает у любого залогиненного,
-  // подписка на него не влияет (как на страницах артистов и сериалов).
   if (currentUser && !isPremium) {
-    isEventFavorited = !!(await prisma.favoriteEvent.findUnique({
-      where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
-    }));
     // «Иду» на встрече сообщества — БЕСПЛАТНО: участие в сообществах не
     // за подпиской (решение владельца 2026-09-08), а отметка здесь и
     // есть весь смысл встречи — по ней видно, сколько народу придёт.
@@ -268,11 +261,8 @@ export default async function EventDetailPage({
     // билеты, раньше ждавшие отдельным await. Свои отметки «иду» —
     // из общей выборки allAttendances, отдельного запроса больше нет.
     const attendances = allAttendances.filter((a) => a.userId === currentUser.id);
-    const [favorite, friendIds, coTravelerIds, myTickets] =
+    const [friendIds, coTravelerIds, myTickets] =
       await Promise.all([
-        prisma.favoriteEvent.findUnique({
-          where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
-        }),
         getFriendIds(currentUser.id),
         getCoTravelerIds(currentUser.id),
         // «Мои билеты»: строка на каждую дату с отметкой «иду». Сами билеты
@@ -287,7 +277,6 @@ export default async function EventDetailPage({
           },
         }),
       ]);
-    isEventFavorited = !!favorite;
     goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
     const ticketByOccurrence = new Map(
       myTickets.filter((t) => t.occurrenceId).map((t) => [t.occurrenceId!, t]),
@@ -548,7 +537,6 @@ export default async function EventDetailPage({
           {eventTitle}
         </h1>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
-          <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
           {/* Выгрузка в календарь — по подписке: маршрут /ics отвечает
               403 без неё, кнопка-обманка была бы хуже её отсутствия. У
               встречи сообщества доступ решает участие, а не подписка —

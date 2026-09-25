@@ -124,9 +124,13 @@ copy — read the schema file for exact field types/nullability.
 Every one of these is a two-column join table keyed on `(userId, ...)`,
 following the same shape:
 
-- **`FavoritePerformer`**, **`FavoriteAgency`**, **`FavoriteEvent`** — the
-  heart/bookmark toggle, one per entity type. Dramas don't get one —
-  `DramaWatchStatus` below is their only per-user signal.
+- **`FavoritePerformer`**, **`FavoriteAgency`** — the heart/bookmark
+  toggle, one per entity type. Dramas don't get one —
+  `DramaWatchStatus` below is their only per-user signal. Events don't
+  either: `FavoriteEvent` was dropped (migration
+  `20260926T02_drop_favorite_event`) because «иду» and «возможно пойду»
+  already cover it; favorites with a future date were converted to
+  `EventMaybe` on the nearest date.
 - **`EventAttendance`** — "Я иду" (I'm going) to this event.
 - **`EventTicket`** — купленный билет-файл к событию (обычно к его
   дате; `occurrenceId` nullable, `SetNull` — пересборка дат события не

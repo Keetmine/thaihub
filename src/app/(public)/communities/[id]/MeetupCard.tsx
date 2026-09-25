@@ -26,7 +26,6 @@ export default async function MeetupCard({
   communityId,
   event,
   values,
-  isFavorited,
   isGoing,
   isMaybe,
   authorName,
@@ -40,7 +39,6 @@ export default async function MeetupCard({
   event: EventWithPerformers;
   /** Заготовка для формы правки — нужна только тем, кто вправе править. */
   values: MeetupFormValues;
-  isFavorited: boolean;
   isGoing: boolean;
   isMaybe: boolean;
   authorName: string | null;
@@ -69,14 +67,13 @@ export default async function MeetupCard({
   return (
     <EventCard
       event={event}
-      isFavorited={isFavorited}
       isGoing={isGoing}
       isMaybe={isMaybe}
       meta={meta}
-      // Карандаш — слева от сердечка, в общем ряду значков карточки.
-      // Удаление сюда не переехало: значок корзины рядом с сердечком
-      // слишком легко нажать мимо, а встречу это уносит насовсем —
-      // «Удалить» осталось внутри окна правки.
+      // Карандаш — в общем ряду значков карточки. Удаление сюда не
+      // переехало: значок корзины рядом с отметками слишком легко
+      // нажать мимо, а встречу это уносит насовсем — «Удалить»
+      // осталось внутри окна правки.
       actions={
         canEdit ? (
           <MeetupForm

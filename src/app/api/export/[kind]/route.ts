@@ -89,9 +89,9 @@ async function buildCsv(kind: Kind, userId: string): Promise<string> {
       );
     }
     case "events": {
-      // «Иду» — по датам, избранное — по событию; собираем в одну
-      // таблицу с колонкой «что отмечено».
-      const [going, favorites] = await Promise.all([
+      // «Иду» и «возможно пойду» — обе отметки по датам; собираем в
+      // одну таблицу с колонкой «что отмечено».
+      const [going, maybes] = await Promise.all([
         prisma.eventAttendance.findMany({
           // Выгрузка «мои события» — про афишу, как и вкладка событий в
           // профиле (см. src/lib/catalogEvents.ts): встречи сообществ
@@ -100,30 +100,27 @@ async function buildCsv(kind: Kind, userId: string): Promise<string> {
           include: { event: true, occurrence: true },
           orderBy: { occurrence: { startsAt: "asc" } },
         }),
-        prisma.favoriteEvent.findMany({
+        prisma.eventMaybe.findMany({
           where: { userId, event: catalogEventsWhere() },
-          include: { event: { include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } } } },
+          include: { event: true, occurrence: true },
+          orderBy: { occurrence: { startsAt: "asc" } },
         }),
       ]);
-      const goingIds = new Set(going.map((g) => g.eventId));
+      const goingOccIds = new Set(going.map((g) => g.occurrenceId));
+      const row = (r: (typeof maybes)[number], mark: string) => [
+        r.event.title, formatDate(r.occurrence.startsAt),
+        r.occurrence.hasTime ? formatDateTime(r.occurrence.startsAt).slice(11) : "",
+        r.event.venue, r.event.address, mark,
+        `https://myblhub.com/event/${r.event.slug ?? r.event.id}`,
+      ];
       return toCsv(
         ["Событие", "Дата", "Время", "Площадка", "Адрес", "Отметка", "Ссылка"],
         [
-          ...going.map((g) => [
-            g.event.title, formatDate(g.occurrence.startsAt),
-            g.occurrence.hasTime ? formatDateTime(g.occurrence.startsAt).slice(11) : "",
-            g.event.venue, g.event.address, "иду",
-            `https://myblhub.com/event/${g.event.slug ?? g.event.id}`,
-          ]),
-          // Избранное, на которое не отмечен поход, — отдельными строками.
-          ...favorites
-            .filter((f) => !goingIds.has(f.eventId))
-            .map((f) => [
-              f.event.title,
-              f.event.occurrences[0] ? formatDate(f.event.occurrences[0].startsAt) : "",
-              "", f.event.venue, f.event.address, "в избранном",
-              `https://myblhub.com/event/${f.event.slug ?? f.event.id}`,
-            ]),
+          ...going.map((g) => row(g, "иду")),
+          // «Возможно» на дату, куда уже отмечен поход, дублировать нечего.
+          ...maybes
+            .filter((m) => !goingOccIds.has(m.occurrenceId))
+            .map((m) => row(m, "возможно пойду")),
         ],
       );
     }

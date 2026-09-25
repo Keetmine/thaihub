@@ -105,7 +105,7 @@ export async function buildDigestMessage(
         startsAt: { gte: rangeStart, lte: rangeEnd },
         OR: [
           { attendances: { some: { userId: user.id } } },
-          { event: { favoritedBy: { some: { userId: user.id } } } },
+          { maybes: { some: { userId: user.id } } },
         ],
       },
       select: {
@@ -116,7 +116,7 @@ export async function buildDigestMessage(
       take: SECTION_LIMIT + 1,
     }),
     // Старты продаж: препродажа бывает только у афишных событий, а
-    // условие «иду или в избранном» — то же, что у пресейл-напоминаний.
+    // условие «иду или возможно» — то же, что у пресейл-напоминаний.
     // Событие тут одно на препродажу (presaleAt лежит у Event, не у
     // даты), поэтому и строка одна, сколько бы дней ни шёл фестиваль.
     prisma.event.findMany({
@@ -125,7 +125,7 @@ export async function buildDigestMessage(
         presaleAt: { gte: rangeStart, lte: rangeEnd },
         OR: [
           { attendees: { some: { userId: user.id } } },
-          { favoritedBy: { some: { userId: user.id } } },
+          { maybes: { some: { userId: user.id } } },
         ],
       },
       select: { id: true, slug: true, title: true, presaleAt: true },

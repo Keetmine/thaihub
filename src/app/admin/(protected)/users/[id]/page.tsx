@@ -69,7 +69,7 @@ export default async function AdminUserPage({
       bannedBy: { select: { name: true, email: true } },
       _count: {
         select: {
-          favoriteEvents: true,
+          eventMaybes: true,
           favoritePerformers: true,
           dramaWatchStatuses: true,
           eventAttendances: true,
@@ -216,7 +216,7 @@ export default async function AdminUserPage({
           </span>
           <span className="kpi-tile-value">{user._count.eventAttendances}</span>
           <span className="kpi-tile-label">отметок «иду»</span>
-          <span className="kpi-tile-hint">{user._count.favoriteEvents} событий в избранном</span>
+          <span className="kpi-tile-hint">{user._count.eventMaybes} отметок «возможно»</span>
         </div>
         <div className="kpi-tile">
           <span className="kpi-tile-icon" aria-hidden>

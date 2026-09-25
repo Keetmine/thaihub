@@ -21,10 +21,9 @@ export const account = {
     // Под-табы вкладки «События» профиля (pill-чипы, счётчик рядом).
     tabUpcoming: "Upcoming",
     tabPast: "Past",
-    tabFavorites: "Favourites",
     emptyTitle: "Nothing here yet",
     emptyHint:
-      "Mark yourself as going to events and add them to your favourites — they will show up here.",
+      "Mark yourself as going to events — they will show up here.",
     emptyCta: "Browse the schedule",
   },
 
@@ -71,7 +70,6 @@ export const account = {
     heroRewatchesTop: (title: string, count: number) => `Most rewatched: ${title} ×${count}`,
 
     chipGoing: "going",
-    chipFavoriteEvents: "in favourites",
     chipPerformers: (n: number) => `favourite ${n === 1 ? "artist" : "artists"}`,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     chipDramas: (_n: number): string => "series on your list",
@@ -216,7 +214,7 @@ export const account = {
     relinkDeletes: "The old account will be deleted — signing into it will no longer be possible.",
     relinkLosses: (losses: string) => `Along with it you will lose: ${losses}.`,
     relinkLostPerformers: (n: number) => `${n} favourite ${n === 1 ? "actor" : "actors"}`,
-    relinkLostEvents: (n: number) => `${n} saved ${n === 1 ? "event" : "events"}`,
+    relinkLostEvents: (n: number) => `${n} “maybe” ${n === 1 ? "mark" : "marks"}`,
     relinkLostAttendances: (n: number) => `${n} “going” ${n === 1 ? "mark" : "marks"}`,
     relinkLostTrips: (n: number) => `${n} ${n === 1 ? "trip" : "trips"}`,
     relinkNoLosses: "There is nothing in it — nothing to lose.",

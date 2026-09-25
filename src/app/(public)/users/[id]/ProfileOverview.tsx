@@ -15,7 +15,6 @@ export default function ProfileOverview({
 }: {
   nav: {
     going: number;
-    favoriteEvents: number;
     favoritePerformers: number;
     dramas: number;
     friends: number;
@@ -28,7 +27,6 @@ export default function ProfileOverview({
 
   const chips: { label: string; value: number; href?: string }[] = [
     { label: o.chipGoing, value: nav.going, href: "/events?filter=going" },
-    { label: o.chipFavoriteEvents, value: nav.favoriteEvents, href: "/events?filter=favorited" },
     {
       label: o.chipPerformers(nav.favoritePerformers),
       value: nav.favoritePerformers,

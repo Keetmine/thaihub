@@ -31,14 +31,12 @@ function monthHeading(key: string, locale: Locale): string {
 
 function MonthSections({
   events,
-  favoritedIds,
   goingIds,
   maybeIds,
   friendsGoing,
   locked,
 }: {
   events: EventWithPerformers[];
-  favoritedIds: Set<string>;
   goingIds: Set<string>;
   maybeIds: Set<string>;
   friendsGoing: Map<string, FriendGoing[]>;
@@ -58,7 +56,6 @@ function MonthSections({
                 <EventCard
                   key={ev.occurrenceId}
                   event={ev}
-                  isFavorited={favoritedIds.has(ev.id)}
                   isGoing={goingIds.has(ev.occurrenceId)}
                   isMaybe={maybeIds.has(ev.occurrenceId)}
                   friendsGoing={friendsGoing.get(ev.id) ?? []}
@@ -90,7 +87,6 @@ export default function InfiniteEventList({
   // phase=upcoming offset=0).
   const [upcoming, setUpcoming] = useState<EventWithPerformers[]>(initialPage.events);
   const [past, setPast] = useState<EventWithPerformers[]>([]);
-  const [favoritedIds, setFavoritedIds] = useState(() => new Set(initialPage.favoritedIds));
   const [goingIds, setGoingIds] = useState(() => new Set(initialPage.goingIds));
   const [maybeIds, setMaybeIds] = useState(() => new Set(initialPage.maybeIds));
   const [friendsGoing, setFriendsGoing] = useState(() => new Map(initialPage.friendsGoing));
@@ -112,7 +108,6 @@ export default function InfiniteEventList({
       if (next.phase === "upcoming") setUpcoming((prev) => [...prev, ...fresh]);
       else setPast((prev) => [...prev, ...fresh]);
 
-      setFavoritedIds((prev) => new Set([...prev, ...page.favoritedIds]));
       setGoingIds((prev) => new Set([...prev, ...page.goingIds]));
       setMaybeIds((prev) => new Set([...prev, ...page.maybeIds]));
       setFriendsGoing((prev) => {
@@ -148,7 +143,6 @@ export default function InfiniteEventList({
     <div>
       <MonthSections
         events={upcoming}
-        favoritedIds={favoritedIds}
         goingIds={goingIds}
         maybeIds={maybeIds}
         friendsGoing={friendsGoing}
@@ -165,7 +159,6 @@ export default function InfiniteEventList({
           <div className="opacity-75">
             <MonthSections
               events={past}
-              favoritedIds={favoritedIds}
               goingIds={goingIds}
               maybeIds={maybeIds}
               friendsGoing={friendsGoing}

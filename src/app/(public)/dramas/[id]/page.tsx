@@ -46,7 +46,6 @@ import {
 } from "@/components/icons";
 import {
   getDramaWatchStatuses,
-  getFavoritedEventIds,
   getGoingOccurrenceIds,
   getMaybeOccurrenceIds,
 } from "@/lib/favorites";
@@ -284,14 +283,12 @@ export default async function DramaDetailPage({
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
   );
   const events = eventsRows.map((e) => e.row);
-  const eventIds = events.map((ev) => ev.id);
   const occIds = events.map((ev) => ev.occurrenceId);
 
   // Вторая волна: пользовательские отметки — ждут только currentUser и
   // результаты первой волны, между собой не связаны.
   const [
     watchStatus,
-    favoritedEventIds,
     goingEventIds,
     maybeOccurrenceIds,
     similarStatuses,
@@ -303,7 +300,6 @@ export default async function DramaDetailPage({
           where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
         })
       : null,
-    getFavoritedEventIds(eventIds, currentUser?.id),
     getGoingOccurrenceIds(occIds, currentUser?.id),
     getMaybeOccurrenceIds(occIds, currentUser?.id),
     // Кнопка статуса на карточках рекомендаций — как у сериалов на
@@ -1143,7 +1139,6 @@ export default async function DramaDetailPage({
                 <EventAgendaRow
                   key={row.id}
                   event={row}
-                  isFavorited={favoritedEventIds.has(row.id)}
                   isGoing={goingEventIds.has(row.occurrenceId)}
                   isMaybe={maybeOccurrenceIds.has(row.occurrenceId)}
                   showDate

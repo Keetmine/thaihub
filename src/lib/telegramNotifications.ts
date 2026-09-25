@@ -40,7 +40,7 @@ const NOTIFY_RECIPIENT_SELECT = {
 
 /**
  * Шлёт телеграм-напоминания о датах событий, начинающихся в ближайшие
- * 24 часа, всем, кто отметил «я иду» или добавил событие в избранное и
+ * 24 часа, всем, кто отметил «я иду» или «возможно пойду» и
  * привязал Telegram. Каждая пара (пользователь, дата события)
  * напоминается ровно один раз — дедуп через TelegramNotification.
  * Вызывается планировщиком из instrumentation.ts; безопасна к
@@ -61,10 +61,11 @@ export async function sendUpcomingEventReminders(): Promise<{ sent: number; skip
     // а потом вышел из сообщества, — уже утечка.
     where: { ...catalogOccurrencesWhere(), startsAt: { gt: now, lte: until } },
     include: {
-      // «Иду» — по конкретной дате (attendances на occurrence);
-      // избранное остаётся событийным.
+      // Обе отметки — по конкретной дате (на occurrence): напоминаем
+      // ровно про тот день, который человек выбрал.
       attendances: { select: recipientSelect },
-      event: { include: { favoritedBy: { select: recipientSelect } } },
+      maybes: { select: recipientSelect },
+      event: true,
       telegramNotifications: { select: { userId: true } },
     },
   });
@@ -74,12 +75,12 @@ export async function sendUpcomingEventReminders(): Promise<{ sent: number; skip
 
   for (const occ of occurrences) {
     const alreadyNotified = new Set(occ.telegramNotifications.map((n) => n.userId));
-    // «Иду» и избранное складываем в одну карту — человек может быть в
+    // «Иду» и «возможно» складываем в одну карту — человек может быть в
     // обоих списках, напоминание всё равно одно.
     const recipients = new Map<string, { id: string; telegramId: string | null }>();
     for (const a of occ.attendances) recipients.set(a.user.id, a.user);
-    for (const f of occ.event.favoritedBy) {
-      if (!recipients.has(f.user.id)) recipients.set(f.user.id, f.user);
+    for (const m of occ.maybes) {
+      if (!recipients.has(m.user.id)) recipients.set(m.user.id, m.user);
     }
 
     for (const user of recipients.values()) {
@@ -169,8 +170,8 @@ const PRESALE_LOOKAHEAD_MINUTES = 60;
 
 /**
  * Пресейл-напоминания (Г1): «через час открываются продажи» — всем с
- * Telegram и активной подпиской, кто отметил «иду» или добавил событие
- * в избранное. Дедуп — TelegramPresaleNotification (одна препродажа на
+ * Telegram и активной подпиской, кто отметил «иду» или «возможно
+ * пойду». Дедуп — TelegramPresaleNotification (одна препродажа на
  * событие, потому ключ (userId, eventId)).
  */
 export async function sendPresaleReminders(): Promise<number> {
@@ -189,7 +190,7 @@ export async function sendPresaleReminders(): Promise<number> {
     where: { ...catalogEventsWhere(), presaleAt: { gt: now, lte: until } },
     include: {
       attendees: { select: recipientSelect },
-      favoritedBy: { select: recipientSelect },
+      maybes: { select: recipientSelect },
       presaleNotifications: { select: { userId: true } },
     },
   });
@@ -197,15 +198,15 @@ export async function sendPresaleReminders(): Promise<number> {
   let sent = 0;
   for (const event of events) {
     const alreadyNotified = new Set(event.presaleNotifications.map((n) => n.userId));
-    // Идущие и избравшие — в одну карту: человек может быть в обоих
+    // Идущие и «возможно» — в одну карту: человек может быть в обоих
     // списках, напоминание всё равно одно.
     const recipients = new Map<
       string,
       { id: string; telegramId: string | null } & PremiumFields
     >();
     for (const a of event.attendees) recipients.set(a.user.id, a.user);
-    for (const f of event.favoritedBy) {
-      if (!recipients.has(f.user.id)) recipients.set(f.user.id, f.user);
+    for (const m of event.maybes) {
+      if (!recipients.has(m.user.id)) recipients.set(m.user.id, m.user);
     }
 
     for (const user of recipients.values()) {

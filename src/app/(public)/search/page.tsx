@@ -17,7 +17,6 @@ import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import CatalogPagination from "@/components/filters/CatalogPagination";
 import SortSelect from "@/components/filters/SortSelect";
 import {
-  getFavoritedEventIds,
   getGoingOccurrenceIds,
   getMaybeOccurrenceIds,
 } from "@/lib/favorites";
@@ -440,8 +439,7 @@ async function EventResults({
       </div>
     );
   }
-  const [favoritedIds, goingIds, maybeIds, friendIds] = await Promise.all([
-    getFavoritedEventIds(rows.map((r) => r.id), currentUser?.id),
+  const [goingIds, maybeIds, friendIds] = await Promise.all([
     getGoingOccurrenceIds(rows.map((r) => r.occurrenceId), currentUser?.id),
     getMaybeOccurrenceIds(rows.map((r) => r.occurrenceId), currentUser?.id),
     getFriendIds(currentUser?.id),
@@ -456,7 +454,6 @@ async function EventResults({
         <EventAgendaRow
           key={row.id}
           event={row}
-          isFavorited={favoritedIds.has(row.id)}
           isGoing={goingIds.has(row.occurrenceId)}
           isMaybe={maybeIds.has(row.occurrenceId)}
           friendsGoing={friendsGoing.get(row.occurrenceId) ?? []}

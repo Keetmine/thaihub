@@ -8,7 +8,6 @@ import type { EventWithPerformers } from "@/lib/types";
 import { eventHref } from "@/lib/eventSlug";
 import { communityHref } from "@/lib/slugHelpers";
 import { PinIcon, UsersIcon } from "@/components/icons";
-import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
 import MaybeButton from "@/components/MaybeButton";
 import MskTimeInfo from "@/components/MskTimeInfo";
@@ -22,7 +21,6 @@ import { useLocale, useT } from "@/components/LocaleProvider";
 export default function EventCard({
   ticketUrl,
   event,
-  isFavorited = false,
   isGoing = false,
   isMaybe = false,
   clashCount = 0,
@@ -33,7 +31,6 @@ export default function EventCard({
   /** Прикреплённый билет текущего юзера (показывается 🎫-кнопкой). */
   ticketUrl?: string | null;
   event: EventWithPerformers;
-  isFavorited?: boolean;
   isGoing?: boolean;
   /** «Возможно пойду» на эту дату: кандидат, а не план. Карточка
    *  приглушается и получает плашку — см. MaybeButton. */
@@ -43,9 +40,9 @@ export default function EventCard({
    *  ради неё кандидаты и выводятся в плане (правка владельца
    *  2026-09-15: «в один день и одно время два эвента, пойду на один»). */
   clashCount?: number;
-  /** Дополнительные действия в углу карточки, СЛЕВА от сердечка —
-   *  правка встречи сообщества (правка владельца 2026-09-09). Слотом, а
-   *  не флагом: карточка одна на всю афишу и знать про сообщества ей
+  /** Дополнительные действия в углу карточки, СЛЕВА от «возможно»/«иду»
+   *  — правка встречи сообщества (правка владельца 2026-09-09). Слотом,
+   *  а не флагом: карточка одна на всю афишу и знать про сообщества ей
    *  незачем. */
   actions?: React.ReactNode;
   /** Тихая строка в теле карточки под площадкой — «Позвал(а) X · идут:
@@ -75,7 +72,6 @@ export default function EventCard({
     <div className={`event-card ${isMaybe && !isGoing ? "is-maybe-row" : ""}`}>
       <div className="corner-actions corner-actions-row">
         {actions}
-        <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
         {/* «Возможно» — только у будущих дат: у прошедшей отмечать
             кандидата бессмысленно, там уже либо ходили, либо нет. */}
         {event.startsAt >= new Date() && (

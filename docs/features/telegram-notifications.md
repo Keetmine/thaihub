@@ -82,8 +82,8 @@ origin) additionally makes the messages carry a link to the event page.
 
 ## Who gets what
 
-Every user with a linked `telegramId` who marked an event "я иду"
-(`EventAttendance`) **or** favorited it (`FavoriteEvent`) gets one
+Every user with a linked `telegramId` who marked a date "я иду"
+(`EventAttendance`) **or** "возможно пойду" (`EventMaybe`) gets one
 reminder per `EventOccurrence` starting within the next 24 hours —
 i.e. a 3-day concert produces up to three reminders, one per date, which
 is the point (each date is its own "don't miss it").
@@ -138,7 +138,7 @@ window in which a reminder could repeat.
 ## Other notifications
 
 The same half-hourly job also sends: **presale reminders** («продажа
-открывается через час», `sendPresaleReminders` — favorited/going users
+открывается через час», `sendPresaleReminders` — going/«возможно» users
 with Telegram *and an active subscription*, dedup in
 `TelegramPresaleNotification` per (user, event)) and **premium expiry
 reminders** (3 days before `premiumUntil`, dedup via

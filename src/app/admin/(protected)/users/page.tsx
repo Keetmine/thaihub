@@ -84,7 +84,7 @@ export default async function AdminUsersPage({
       take: PAGE_SIZE,
       include: {
         _count: {
-          select: { favoriteEvents: true, eventAttendances: true, dramaWatchStatuses: true },
+          select: { eventMaybes: true, eventAttendances: true, dramaWatchStatuses: true },
         },
       },
     }),
@@ -246,7 +246,7 @@ export default async function AdminUsersPage({
                         u.email,
                         u.telegramUsername ? `@${u.telegramUsername}` : u.telegramId ? "Telegram" : null,
                         `с ${formatShortDate(u.createdAt)} ${u.createdAt.getFullYear()}`,
-                        `${u._count.eventAttendances} идёт · ${u._count.favoriteEvents} избр. · ${u._count.dramaWatchStatuses} сериалов`,
+                        `${u._count.eventAttendances} идёт · ${u._count.eventMaybes} возм. · ${u._count.dramaWatchStatuses} сериалов`,
                       ]
                         .filter(Boolean)
                         .join(" · ")}

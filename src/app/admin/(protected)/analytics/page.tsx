@@ -40,9 +40,9 @@ export default async function AdminAnalyticsPage() {
         // src/lib/catalogEvents.ts).
         where: catalogEventsWhere(),
         include: {
-          _count: { select: { favoritedBy: true, attendees: true } },
+          _count: { select: { maybes: true, attendees: true } },
         },
-        orderBy: [{ favoritedBy: { _count: "desc" } }],
+        orderBy: [{ attendees: { _count: "desc" } }],
         take: 10,
       }),
       prisma.performer.findMany({
@@ -143,7 +143,7 @@ export default async function AdminAnalyticsPage() {
 
       <div className="row g-4">
         <div className="col-12 col-lg-6">
-          <h2 className="section-heading mb-2">Топ событий (избранное + «иду»)</h2>
+          <h2 className="section-heading mb-2">Топ событий («иду» + «возможно»)</h2>
           <div className="d-flex flex-column gap-2">
             {topEvents.map((e, i) => (
               <div key={e.id} className="surface d-flex justify-content-between gap-3 p-3">
@@ -151,7 +151,7 @@ export default async function AdminAnalyticsPage() {
                   {i + 1}. {e.title}
                 </Link>
                 <span className="small text-secondary flex-shrink-0">
-                  ♥ {e._count.favoritedBy} · идут {e._count.attendees}
+                  идут {e._count.attendees} · возможно {e._count.maybes}
                 </span>
               </div>
             ))}

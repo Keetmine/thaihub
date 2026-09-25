@@ -202,9 +202,12 @@ export default async function PublicLayout({ children }: { children: React.React
                 >
                   <SearchIcon />
                 </Link>
+                {/* Избранное на событиях убрано (2026-09-26) — сердечко
+                    ведёт к избранным артистам: их секция закреплена
+                    сверху списка. */}
                 {user && (
                   <Link
-                    href="/events?filter=favorited"
+                    href="/artists#favorites"
                     prefetch={false}
                     className="icon-btn"
                     aria-label={t.nav.favorites}

@@ -15,10 +15,9 @@ export const account: Dict["account"] = {
     // Под-табы вкладки «События» профиля (pill-чипы, счётчик рядом).
     tabUpcoming: "Предстоящие",
     tabPast: "Прошедшие",
-    tabFavorites: "Избранное",
     emptyTitle: "Пока пусто",
     emptyHint:
-      "Отмечайте «иду» на событиях и добавляйте их в избранное — они появятся здесь.",
+      "Отмечайте «иду» на событиях — они появятся здесь.",
     emptyCta: "Посмотреть афишу",
   },
 
@@ -62,7 +61,6 @@ export const account: Dict["account"] = {
       `Чаще всего пересматриваю: ${title} ×${count}`,
 
     chipGoing: "иду",
-    chipFavoriteEvents: "в избранном",
     chipPerformers: (n: number) =>
       plural(n, ["любимый артист", "любимых артиста", "любимых артистов"]),
     chipDramas: (n: number) => `${plural(n, ["сериал", "сериала", "сериалов"])} в списке`,
@@ -196,7 +194,7 @@ export const account: Dict["account"] = {
     relinkLostPerformers: (n: number) =>
       pluralized(n, ["любимый артист", "любимых артиста", "любимых артистов"]),
     relinkLostEvents: (n: number) =>
-      pluralized(n, ["событие в избранном", "события в избранном", "событий в избранном"]),
+      pluralized(n, ["отметка «возможно пойду»", "отметки «возможно пойду»", "отметок «возможно пойду»"]),
     relinkLostAttendances: (n: number) =>
       pluralized(n, ["отметка «иду»", "отметки «иду»", "отметок «иду»"]),
     relinkLostTrips: (n: number) => pluralized(n, ["поездка", "поездки", "поездок"]),

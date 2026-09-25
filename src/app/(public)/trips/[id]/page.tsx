@@ -20,7 +20,7 @@ import { getT, type Dict, type Locale } from "@/lib/i18n";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import type { TripItemVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, itemVisibilityChoices } from "../itemVisibility";
-import { getFavoritedEventIds, getGoingOccurrenceIds, getMaybeOccurrenceIds } from "@/lib/favorites";
+import { getGoingOccurrenceIds, getMaybeOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { deleteTrip } from "../actions";
 import EmptyState from "@/components/EmptyState";
@@ -655,15 +655,13 @@ export default async function TripPage({
     : occurrences;
   const events = shownOccurrences.map(flattenOccurrence);
 
-  const eventIds = events.map((ev) => ev.id);
   const occIds = events.map((ev) => ev.occurrenceId);
-  // Личное к событиям (избранное, «иду», кто из друзей идёт, билеты 🎫
+  // Личное к событиям («иду», «возможно», кто из друзей идёт, билеты 🎫
   // в карточку) есть только у залогиненного: гостю нечего показывать и
-  // не за кем ходить в базу. Всё четыре зависят лишь от списка событий
-  // и друг друга не ждут (аудит 2026-09, п.4).
-  const [favoritedIds, goingIds, maybeIds, friendIds, myTickets] = viewerId
+  // не за кем ходить в базу. Всё зависит лишь от списка событий
+  // и друг друга не ждёт (аудит 2026-09, п.4).
+  const [goingIds, maybeIds, friendIds, myTickets] = viewerId
     ? await Promise.all([
-        getFavoritedEventIds(eventIds, viewerId),
         getGoingOccurrenceIds(occIds, viewerId),
         getMaybeOccurrenceIds(occIds, viewerId),
         getFriendIds(viewerId),
@@ -673,7 +671,6 @@ export default async function TripPage({
         }),
       ])
     : [
-        new Set<string>(),
         new Set<string>(),
         new Set<string>(),
         [] as string[],
@@ -1388,7 +1385,6 @@ export default async function TripPage({
           canSeeEvents ? (
             <EventCard
               event={item.event}
-              isFavorited={favoritedIds.has(item.event.id)}
               isGoing={goingIds.has(item.event.occurrenceId)}
               isMaybe={maybeIds.has(item.event.occurrenceId)}
               clashCount={clashes.get(item.event.occurrenceId) ?? 0}

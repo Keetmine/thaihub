@@ -12,7 +12,6 @@ export const events: Dict["events"] = {
     openCalendar: "Посмотреть в календаре",
     tabAll: "Все",
     tabGoing: "Я иду",
-    tabFavorites: "Избранное",
     tabArtists: "Мои артисты",
     tabCommunities: "Сообщества",
     searchPlaceholder: "Поиск по названию…",

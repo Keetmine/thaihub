@@ -91,7 +91,6 @@ model Event {
   photos                      EventPhoto[]
   performers                  EventPerformer[]
   pairings                    EventPairing[]
-  favoritedBy                 FavoriteEvent[]
   attendees                   EventAttendance[]
   maybes                      EventMaybe[]
   seenPerformers              EventSeenPerformer[]
@@ -1026,7 +1025,6 @@ model User {
 
   sessions                     UserSession[]
   favoritePerformers           FavoritePerformer[]
-  favoriteEvents               FavoriteEvent[]
   favoriteAgencies             FavoriteAgency[]
   eventAttendances             EventAttendance[]
   personalEventAttendances     TripPersonalEventAttendance[]
@@ -1713,17 +1711,6 @@ model FavoriteAgency {
 
   @@id([userId, agencyId])
   @@index([agencyId])
-}
-
-model FavoriteEvent {
-  userId    String
-  eventId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@id([userId, eventId])
-  @@index([eventId])
 }
 
 // «Я пойду» — теперь на КОНКРЕТНУЮ дату (occurrence), а не на событие

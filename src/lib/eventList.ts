@@ -3,7 +3,6 @@ import { catalogEventsWhere, viewerEventsWhere, viewerMeetupsWhere } from "@/lib
 import { endOfDay, parseDateKey, startOfDay } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import {
-  getFavoritedEventIds,
   getGoingOccurrenceIds,
   getMaybeOccurrenceIds,
 } from "@/lib/favorites";
@@ -18,7 +17,7 @@ import type { EventWithPerformers } from "@/lib/types";
 export const EVENT_PAGE_SIZE = 20;
 
 export type EventListFilters = {
-  filter: "all" | "going" | "favorited" | "artists" | "communities";
+  filter: "all" | "going" | "artists" | "communities";
   from: string;
   to: string;
   q: string;
@@ -30,7 +29,6 @@ export type FriendGoing = { id: string; name: string | null; photoUrl: string | 
 
 export type EventListPage = {
   events: EventWithPerformers[];
-  favoritedIds: string[];
   // occurrenceId'ы, на которые юзер идёт (отметка — per-дата).
   goingIds: string[];
   /** «Возможно пойду» — кандидаты, а не план: карточки рисуют их
@@ -72,7 +70,6 @@ function occurrenceFilterWhere(userId: string | null, filters: EventListFilters)
         ? viewerEventsWhere(userId)
         : catalogEventsWhere()),
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-    ...(filter === "favorited" && userId ? { favoritedBy: { some: { userId } } } : {}),
     // «Мои артисты» — события, где выступает кто-то из избранных
     // исполнителей (актёры, группы и маскоты — все Performer) либо
     // пейринг с их участием.
@@ -194,10 +191,8 @@ export async function fetchEventListPage(
     }));
   }
 
-  const eventIds = isPremium ? events.map((ev) => ev.id) : [];
   const occurrenceIds = isPremium ? events.map((ev) => ev.occurrenceId) : [];
-  const [favoritedIds, goingIds, maybeIds, friendIds] = await Promise.all([
-    getFavoritedEventIds(eventIds, userId),
+  const [goingIds, maybeIds, friendIds] = await Promise.all([
     getGoingOccurrenceIds(occurrenceIds, userId),
     getMaybeOccurrenceIds(occurrenceIds, userId),
     getFriendIds(userId),
@@ -212,7 +207,6 @@ export async function fetchEventListPage(
 
   return {
     events,
-    favoritedIds: Array.from(favoritedIds),
     goingIds: Array.from(goingIds),
     maybeIds: Array.from(maybeIds),
     friendsGoing: Array.from(friendsGoingByEvent.entries()),
