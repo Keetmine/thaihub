@@ -780,9 +780,13 @@ export default async function PerformerPage({
                 }}
               />
             </div>
+            {/* align-self-stretch: на ПК колонка прижимает детей влево
+                (align-items-sm-start), и без растяжки блок иконок сжимался
+                до своей ширины — центровать внутри было нечего (правка
+                владельца 2026-09-26: «соцсети под фото по центру»). */}
             <SocialLinkIcons
               items={socialItems}
-              className="justify-content-center"
+              className="justify-content-center align-self-stretch"
             />
             {birthdayBadge}
           </div>
