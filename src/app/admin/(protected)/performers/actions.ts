@@ -10,6 +10,7 @@ import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
 import { rankedPerformerSearch } from "@/lib/performerSearch";
 import { realignTranslations } from "@/lib/entityTranslations";
+import { runMdlPerformerImport } from "../imports/actions";
 
 
 
@@ -586,3 +587,31 @@ export async function updatePerformer(id: string, formData: FormData) {
   if (saveGeneral) redirect(`/admin/performers/${id}/edit?saved=1`);
 }
 
+
+/**
+ * «Обновить инфу» у ссылки на MyDramaList в форме артиста (просьба
+ * владельца 2026-09-26): тот же фоновый импорт, что в разделе импортов,
+ * сразу с разбором фильмографии. Импорт дополняет только пустые поля —
+ * занесённое руками не переписывает. Ошибка — значением: текст
+ * исключения из server action в проде до клиента не доезжает.
+ */
+export async function refreshPerformerFromMdl(
+  performerId: string,
+  url: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  await requireCatalogEditor();
+  const clean = url.trim();
+  if (!/^https?:\/\/(www\.)?mydramalist\.com\/people\//i.test(clean)) {
+    return { ok: false, error: "Нужна ссылка на профиль человека: https://mydramalist.com/people/…" };
+  }
+  const formData = new FormData();
+  formData.set("mdlUrl", clean);
+  formData.set("performerId", performerId);
+  formData.set("withFilmography", "on");
+  try {
+    await runMdlPerformerImport(formData);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  return { ok: true };
+}

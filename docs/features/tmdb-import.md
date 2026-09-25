@@ -31,9 +31,11 @@ compliant path, not just a technical convenience. Requires
 - **`src/lib/localImage.ts`** — `downloadRemoteImage(url, folder)`, used
   by every DB-persisting TMDB image write (see "Local image storage"
   below).
-- **Admin flow**: `/admin/performers/[id]/import-tmdb` — a "Импортировать
-  с TMDB" link on a **solo** performer's edit page (bands aren't people on
-  TMDB, so this doesn't apply to them). `TmdbImportFlow.tsx` mirrors
+- **Admin flow**: `/admin/performers/[id]/import-tmdb`. Ссылки на него со
+  страницы артиста больше нет (правка владельца 2026-09-26: «непонятно,
+  для чего она») — страница открывается только по прямому адресу;
+  обновление карточки теперь делается кнопкой «Обновить инфу» у ссылки
+  на MyDramaList. `TmdbImportFlow.tsx` mirrors
   `TtmImportFlow.tsx`'s two-step shape: paste a person URL/id → review →
   confirm. Nothing is written until the confirm step.
 **Массовых прогонов больше нет.** Кнопки «Импортировать с TMDB» на

@@ -236,11 +236,9 @@ export default async function EditPerformerPage({
         />
 
         <div className="d-flex flex-wrap align-items-center gap-3 pt-2">
-          {performer.type === "SOLO" && (
-            <Link href={`/admin/performers/${id}/import-tmdb`} className="btn btn-ghost btn-sm">
-              Импортировать с TMDB
-            </Link>
-          )}
+          {/* Ссылки «Импортировать с TMDB» здесь больше нет (правка
+              владельца 2026-09-26: «непонятно, для чего она»). Обновление
+              карточки — кнопкой у ссылки на MyDramaList в форме. */}
           <ConfirmForm
             action={boundDelete}
             confirmMessage={`Удалить исполнителя «${performer.name}»?`}
