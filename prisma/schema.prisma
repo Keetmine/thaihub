@@ -2876,37 +2876,24 @@ model ContentTranslation {
   @@unique([kind, source])
 }
 
-/// Факты артиста на проверку (просьба владельца 2026-09-26: «когда
-/// парсятся дополнительные факты — открыть на странице, чьи они: поле
-/// оригинал, что после, и перевод, три колонки, как на гитхабе с +»).
-///
-/// Импортёры (фандом, kprofiles) больше не пишут факты в карточку сами:
-/// кладут сюда то, что пришло (`incoming`). Обработка — модель сливает
-/// пришедшее с нашими фактами, пересказывает и переводит только новое —
-/// пишет `proposedEn` / `proposedRu`. Владелец смотрит сравнение в
-/// /admin/facts и применяет или отклоняет. Применение сохраняет прежние
-/// списки в TextRewrite (entity «performer», field «trivia»), откат
-/// работает как у остальных текстов.
+/// Факты артиста на проверку (просьба владельца 2026-09-26): импортёры
+/// (фандом) не пишут факты в карточку сами, а кладут сюда то, что
+/// пришло. Разбор — только руками в /admin/facts: таблица «до / после
+/// объединения / перевод», владелец правит и применяет. Применение
+/// сохраняет прежние списки в TextRewrite (entity «performer», field
+/// «trivia») — откат работает как у остальных текстов.
 model FactsReview {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   performerId String
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
-  /// Откуда пришло: «tpop-fandom», «kprofiles»…
+  /// Откуда пришло: «tpop-fandom»…
   source      String
   sourceUrl   String?
   /// Факты как на источнике — английский, без обработки.
   incoming    String[]
-  /// PENDING — ждёт обработки моделью; READY — предложение готово, ждёт
-  /// владельца; APPLIED — применено; REJECTED — отклонено.
-  status      String   @default("PENDING")
-  /// Снимок наших фактов на момент обработки — «оригинал» в сравнении.
-  baseEn      String[] @default([])
-  baseRu      String[] @default([])
-  proposedEn  String[] @default([])
-  proposedRu  String[] @default([])
-  model       String?
-  createdAt   DateTime @default(now())
-  processedAt DateTime?
+  /// PENDING — ждёт владельца; APPLIED — применено; REJECTED — отклонено.
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
   reviewedAt  DateTime?
 
   @@index([status, createdAt])

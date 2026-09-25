@@ -9,8 +9,7 @@ export const metadata = { title: "Факты на проверку" };
 export const dynamic = "force-dynamic";
 
 const TABS = [
-  { key: "READY", label: "Ждут решения" },
-  { key: "PENDING", label: "Ждут обработки" },
+  { key: "PENDING", label: "Ждут разбора" },
   { key: "APPLIED", label: "Применены" },
   { key: "REJECTED", label: "Отклонены" },
 ] as const;
@@ -18,9 +17,8 @@ const PAGE_SIZE = 40;
 
 /**
  * Очередь фактов артистов (просьба владельца 2026-09-26). Импортёры
- * кладут сюда пришедшие факты, модель предлагает слитый и переведённый
- * список, владелец открывает запись, смотрит сравнение в три колонки,
- * правит руками и применяет. Только для админа.
+ * кладут сюда пришедшие факты, владелец разбирает их руками: таблица
+ * «до / после объединения / перевод». Только для админа.
  */
 export default async function FactsQueuePage({
   searchParams,
@@ -29,7 +27,7 @@ export default async function FactsQueuePage({
 }) {
   await requireAdminPage();
   const sp = await searchParams;
-  const tab = TABS.find((t) => t.key === sp.tab)?.key ?? "READY";
+  const tab = TABS.find((t) => t.key === sp.tab)?.key ?? "PENDING";
   const page = parsePage(sp.page);
 
   const [counts, rows, total] = await Promise.all([
@@ -52,11 +50,10 @@ export default async function FactsQueuePage({
         Факты на проверку
       </h1>
       <p className="text-secondary mb-4" style={{ maxWidth: "44rem" }}>
-        Факты об артистах с внешних источников (фандом, kprofiles) не пишутся в
-        карточку сразу, а ждут здесь. Модель сливает их с нашими — наши остаются
-        дословно, новое пересказывается и переводится. Откройте запись: слева
-        наши факты, в середине и справа — что будет после, новые строки отмечены
-        «+». Правьте руками и применяйте.
+        Факты об артистах с внешних источников (фандом) не пишутся в карточку
+        сразу, а ждут здесь. Откройте запись: слева наши факты, в середине —
+        что уйдёт на сайт (новые отмечены «+»), справа — перевод. Правьте,
+        впишите перевод новым и применяйте.
       </p>
 
       <div className="tab-bar mb-3">
@@ -91,7 +88,6 @@ export default async function FactsQueuePage({
                 </span>
                 <span className="small text-secondary">
                   {r.source} · пришло {r.incoming.length} · наших {r.performer.trivia.length}
-                  {r.proposedEn.length > 0 && ` · после ${r.proposedEn.length}`}
                 </span>
               </div>
               <span className="small text-secondary flex-shrink-0">

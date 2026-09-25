@@ -1,28 +1,28 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { prisma } from "../../src/lib/prisma";
-import { diffFacts, enqueueFacts } from "../../src/lib/factsReview";
+import { buildFactRows, enqueueFacts } from "../../src/lib/factsReview";
 
 // Очередь фактов на проверку (lib/factsReview.ts, раздел /admin/facts).
-// Сравнение — чистое; постановка в очередь — интеграционно, фикстурный
+// Таблица разбора — чистая; постановка в очередь — интеграционно, фикстурный
 // артист с меткой убирается в finally. Запуск:
 //
 //   npx tsx tests/unit/factsReview.test.ts
 
-// ---------- сравнение «как на гитхабе» ----------
+// ---------- таблица разбора «до / после / перевод» ----------
 assert.deepEqual(
-  diffFacts(["Likes cats.", "Born in Bangkok"], ["Likes cats", "Born in Bangkok", "Plays bass"]),
+  buildFactRows(["Likes cats", "Born in Bangkok"], ["Любит кошек", "Родился в Бангкоке"], ["likes cats.", "Plays bass"]),
   [
-    { kind: "same", text: "Likes cats" },
-    { kind: "same", text: "Born in Bangkok" },
-    { kind: "add", text: "Plays bass" },
+    { original: "Likes cats", en: "Likes cats", ru: "Любит кошек" },
+    { original: "Born in Bangkok", en: "Born in Bangkok", ru: "Родился в Бангкоке" },
+    { original: null, en: "Plays bass", ru: "" },
   ],
-  "точка в конце и регистр не делают строку новой; новое — «+»",
+  "наши сверху со своим переводом; пришедшее, которое у нас уже есть, не дублируется; новое — без перевода",
 );
 assert.deepEqual(
-  diffFacts(["Old fact", "Kept"], ["Kept"]),
-  [{ kind: "same", text: "Kept" }, { kind: "del", text: "Old fact" }],
-  "пропавшее — «−» в конце",
+  buildFactRows(["A fact"], [], ["New one"]),
+  [{ original: "A fact", en: "A fact", ru: "" }, { original: null, en: "New one", ru: "" }],
+  "русского у нас не было — перевод пустой и у наших",
 );
 
 // ---------- постановка в очередь ----------

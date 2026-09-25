@@ -2,31 +2,25 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
- * Очередь фактов артистов на проверку (просьба владельца 2026-09-26:
- * «когда парсятся дополнительные факты — открыть в админке, чьи они:
- * оригинал, что после, и перевод, три колонки, как на гитхабе с +»).
+ * Очередь фактов артистов на проверку (просьба владельца 2026-09-26).
  *
- * Жизнь записи FactsReview:
- *  1. **PENDING** — импортёр положил, что пришло (`enqueueFacts`);
- *  2. **READY** — модель предложила слитый английский и русский список
- *     (scripts/facts-review-export.ts → подагент → facts-review-import.ts);
- *  3. **APPLIED** или **REJECTED** — решение владельца в /admin/facts.
- *
- * Почему не сразу в карточку: импорт с фандома писал факты только если
- * их не было, и только по-английски — у артиста с фактами пришедшее
- * пропадало, а без фактов на русской странице висел английский текст.
+ * Импортёры с фандома не пишут факты в карточку сами: раньше импорт
+ * через группу писал их только в пустое и только по-английски, а
+ * импорт со страницы артиста перезаписывал целиком (у Onglee так
+ * пропали факты, заведённые руками). Теперь они ложатся в FactsReview,
+ * а разбор — только руками в /admin/facts: таблица «до / после
+ * объединения / перевод», строка на факт.
  */
 
 /** Нормализация для сравнения: регистр, пробелы, конечная точка. */
-function normFact(s: string): string {
+export function normFact(s: string): string {
   return s.toLowerCase().replace(/\s+/g, " ").replace(/[.!…]+$/, "").trim();
 }
 
 /**
- * Поставить пришедшие факты в очередь. Повторный импорт того же набора
- * записи не плодит: если по артисту и источнику уже есть необработанная
- * или ждущая решения запись — пришедшее дописывается в неё без повторов.
- * Пустое и то, что у нас уже есть дословно, не ставится вовсе.
+ * Поставить пришедшие факты в очередь. Факты, которые у нас уже есть
+ * дословно, не ставятся; по артисту и источнику держится одна открытая
+ * запись — повторный импорт дописывает в неё без повторов.
  */
 export async function enqueueFacts(
   performerId: string,
@@ -46,16 +40,15 @@ export async function enqueueFacts(
   if (fresh.length === 0) return "nothing";
 
   const open = await prisma.factsReview.findFirst({
-    where: { performerId, source, status: { in: ["PENDING", "READY"] } },
+    where: { performerId, source, status: "PENDING" },
   });
   if (open) {
     const known = new Set(open.incoming.map(normFact));
     const add = fresh.filter((f) => !known.has(normFact(f)));
     if (add.length === 0) return "nothing";
-    // Набор изменился — прежнее предложение модели устарело.
     await prisma.factsReview.update({
       where: { id: open.id },
-      data: { incoming: [...open.incoming, ...add], status: "PENDING", proposedEn: [], proposedRu: [] },
+      data: { incoming: [...open.incoming, ...add] },
     });
     return "merged";
   }
@@ -65,33 +58,36 @@ export async function enqueueFacts(
   return "queued";
 }
 
-export type DiffLine = { kind: "same" | "add" | "del"; text: string };
+/** Строка таблицы разбора: наш факт (или null, если он новый), что
+ *  будет после объединения и перевод. */
+export type FactRow = { original: string | null; en: string; ru: string };
 
 /**
- * Построчное сравнение двух списков фактов — для колонки «после» в
- * стиле гитхаба. Списки не упорядочены по смыслу, поэтому это не
- * diff последовательностей, а сверка множеств с сохранением порядка:
- * строки из `after` идут как есть (оставшиеся — «same», новые — «add»),
- * пропавшие из `before` дописываются в конец как «del».
+ * Черновик таблицы: сперва наши факты с их переводами (русский список
+ * у нас выровнен с английским по номеру строки), потом пришедшие —
+ * без перевода и без тех, что у нас уже есть.
  */
-export function diffFacts(before: string[], after: string[]): DiffLine[] {
-  const was = new Set(before.map(normFact));
-  const now = new Set(after.map(normFact));
-  const lines: DiffLine[] = after.map((text) => ({ kind: was.has(normFact(text)) ? "same" : "add", text }));
-  for (const text of before) if (!now.has(normFact(text))) lines.push({ kind: "del", text });
-  return lines;
+export function buildFactRows(ourEn: string[], ourRu: string[], incoming: string[]): FactRow[] {
+  const have = new Set(ourEn.map(normFact));
+  const rows: FactRow[] = ourEn.map((en, i) => ({ original: en, en, ru: ourRu[i] ?? "" }));
+  for (const f of incoming) {
+    if (have.has(normFact(f))) continue;
+    have.add(normFact(f));
+    rows.push({ original: null, en: f, ru: "" });
+  }
+  return rows;
 }
 
-/** Применить предложение: списки — в карточку, прежние — в TextRewrite
- *  (если отметки ещё нет; иначе там уже лежит самый первый оригинал, и
- *  откат должен вести к нему). */
-export async function applyFactsReview(id: string): Promise<void> {
+/** Применить таблицу: списки — в карточку, прежние — в TextRewrite
+ *  (если отметки ещё не было; иначе там уже лежит самый первый
+ *  оригинал, и откат должен вести к нему). */
+export async function applyFactsReview(id: string, en: string[], ru: string[]): Promise<void> {
   const r = await prisma.factsReview.findUnique({ where: { id } });
   if (!r) throw new Error("Запись не найдена");
-  if (r.status !== "READY") throw new Error("Предложение ещё не готово или уже решено");
-  if (r.proposedEn.length === 0 || r.proposedEn.length !== r.proposedRu.length) {
-    throw new Error("Предложение неполное: английский и русский списки не сходятся");
-  }
+  if (r.status !== "PENDING") throw new Error("Запись уже разобрана");
+  if (en.length === 0) throw new Error("Список фактов пуст");
+  if (en.length !== ru.length) throw new Error("Английский и русский списки не сходятся");
+
   const p = await prisma.performer.findUnique({
     where: { id: r.performerId },
     select: { trivia: true, translations: true },
@@ -99,34 +95,23 @@ export async function applyFactsReview(id: string): Promise<void> {
   if (!p) throw new Error("Артист не найден");
   const tr = (p.translations as Record<string, Record<string, unknown>> | null) ?? {};
   const prevRu = (tr.ru?.trivia as string[] | undefined) ?? [];
+  const key = { entity: "performer", entityId: r.performerId, field: "trivia" };
 
   await prisma.$transaction(async (tx) => {
-    const mark = await tx.textRewrite.findUnique({
-      where: { entity_entityId_field: { entity: "performer", entityId: r.performerId, field: "trivia" } },
-    });
-    const rewritten = JSON.stringify({ en: r.proposedEn, ru: r.proposedRu });
+    const rewritten = JSON.stringify({ en, ru });
+    const mark = await tx.textRewrite.findUnique({ where: { entity_entityId_field: key } });
     if (mark) {
-      await tx.textRewrite.update({
-        where: { entity_entityId_field: { entity: "performer", entityId: r.performerId, field: "trivia" } },
-        data: { rewritten, model: r.model ?? "unknown" },
-      });
+      await tx.textRewrite.update({ where: { entity_entityId_field: key }, data: { rewritten, model: "manual" } });
     } else {
       await tx.textRewrite.create({
-        data: {
-          entity: "performer",
-          entityId: r.performerId,
-          field: "trivia",
-          original: JSON.stringify({ en: p.trivia, ru: prevRu }),
-          rewritten,
-          model: r.model ?? "unknown",
-        },
+        data: { ...key, original: JSON.stringify({ en: p.trivia, ru: prevRu }), rewritten, model: "manual" },
       });
     }
     await tx.performer.update({
       where: { id: r.performerId },
       data: {
-        trivia: r.proposedEn,
-        translations: { ...tr, ru: { ...(tr.ru ?? {}), trivia: r.proposedRu } } as Prisma.InputJsonValue,
+        trivia: en,
+        translations: { ...tr, ru: { ...(tr.ru ?? {}), trivia: ru } } as Prisma.InputJsonValue,
       },
     });
     await tx.factsReview.update({ where: { id }, data: { status: "APPLIED", reviewedAt: new Date() } });

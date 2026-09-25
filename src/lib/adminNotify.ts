@@ -207,9 +207,8 @@ export async function adminBadgeCounts(): Promise<Record<string, number>> {
     // «Маскоты» там же) — тоже ждут «Одобрить»/«Отклонить» владельца.
     prisma.mascotDraft.count({ where: { status: "PENDING" } }),
     prisma.errorLog.count({ where: { createdAt: { gte: dayAgo }, reviewedAt: null } }),
-    // Факты на проверку (/admin/facts) — и ждущие решения, и ждущие
-    // обработки моделью: второе — сигнал владельцу попросить обработку.
-    prisma.factsReview.count({ where: { status: { in: ["READY", "PENDING"] } } }),
+    // Факты на проверку (/admin/facts), ждут разбора владельцем.
+    prisma.factsReview.count({ where: { status: "PENDING" } }),
     // Дубли — через кеш на 15 минут: подсчёт проходит весь каталог.
     pendingDuplicateCount().catch(() => 0),
   ]);

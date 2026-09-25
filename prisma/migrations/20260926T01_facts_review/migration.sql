@@ -1,6 +1,6 @@
 -- Очередь фактов артистов на проверку (просьба владельца 2026-09-26):
--- импортёры кладут сюда пришедшие факты, модель предлагает слитый и
--- переведённый список, владелец применяет или отклоняет в /admin/facts.
+-- импортёры кладут сюда пришедшие факты, владелец разбирает их руками
+-- в /admin/facts — «до / после объединения / перевод» — и применяет.
 CREATE TABLE "FactsReview" (
     "id" TEXT NOT NULL,
     "performerId" TEXT NOT NULL,
@@ -8,13 +8,7 @@ CREATE TABLE "FactsReview" (
     "sourceUrl" TEXT,
     "incoming" TEXT[],
     "status" TEXT NOT NULL DEFAULT 'PENDING',
-    "baseEn" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "baseRu" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "proposedEn" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "proposedRu" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "model" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "processedAt" TIMESTAMP(3),
     "reviewedAt" TIMESTAMP(3),
     CONSTRAINT "FactsReview_pkey" PRIMARY KEY ("id")
 );
