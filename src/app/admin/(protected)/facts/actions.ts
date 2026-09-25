@@ -17,8 +17,9 @@ export async function applyFacts(
   const clean = rows
     .map((r) => ({ en: r.en.replace(/\s+/g, " ").trim(), ru: r.ru.replace(/\s+/g, " ").trim() }))
     .filter((r) => r.en || r.ru);
-  const noRu = clean.findIndex((r) => r.en && !r.ru);
-  if (noRu >= 0) return { ok: false, error: `У факта №${noRu + 1} нет перевода` };
+  // Перевод не обязателен (правка владельца 2026-09-26): пустая строка
+  // держит выравнивание списков по номеру, а на русской странице такой
+  // факт просто не показывается (translatedList отбрасывает пустые).
   const noEn = clean.findIndex((r) => !r.en && r.ru);
   if (noEn >= 0) return { ok: false, error: `У факта №${noEn + 1} есть перевод, но нет английского` };
   try {

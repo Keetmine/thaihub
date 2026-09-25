@@ -9,7 +9,7 @@ import type { FactRow } from "@/lib/factsReview";
  * Разбор фактов руками (просьба владельца 2026-09-26): три колонки —
  * «до» (наш факт), «после объединения» (что уйдёт на сайт; новые с
  * источника отмечены «+») и «перевод» (наш русский, если был; у новых
- * пусто — вписать). Строка на факт: перевод стоит напротив своего
+ * пусто, перевод не обязателен). Строка на факт: перевод стоит напротив своего
  * оригинала, промахнуться строкой нельзя. «Применить» берёт таблицу
  * как есть.
  */
@@ -65,7 +65,7 @@ export default function FactsTable({ id, initial, decided }: { id: string; initi
                   </td>
                   <td>
                     <textarea
-                      className="form-control form-control-sm"
+                      className="form-control form-control-sm facts-input"
                       rows={2}
                       value={r.en}
                       onChange={(e) => set(i, { en: e.target.value })}
@@ -74,10 +74,10 @@ export default function FactsTable({ id, initial, decided }: { id: string; initi
                   </td>
                   <td>
                     <textarea
-                      className={`form-control form-control-sm ${r.en.trim() && !r.ru.trim() ? "is-invalid" : ""}`}
+                      className="form-control form-control-sm facts-input"
                       rows={2}
                       value={r.ru}
-                      placeholder={isNew ? "впишите перевод" : ""}
+                      placeholder="без перевода"
                       onChange={(e) => set(i, { ru: e.target.value })}
                       disabled={decided}
                     />
@@ -104,18 +104,19 @@ export default function FactsTable({ id, initial, decided }: { id: string; initi
             </button>
             <span className="small text-secondary">
               Новых {added}
-              {missingRu > 0 && <span className="text-warning"> · без перевода {missingRu}</span>}
+              {missingRu > 0 && <span> · без перевода {missingRu}</span>}
             </span>
             <button type="button" className="btn btn-ghost btn-sm text-danger ms-auto" onClick={reject} disabled={pending}>
               Отклонить
             </button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={apply} disabled={pending || missingRu > 0}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={apply} disabled={pending}>
               {pending ? "Применяем…" : "Применить на сайт"}
             </button>
           </div>
           {missingRu > 0 && (
             <p className="small text-secondary mt-2 mb-0">
-              «Применить» станет активной, когда у каждого факта будет перевод.
+              Перевод не обязателен: факт без перевода на русской странице не
+              покажется, пока его не переведут.
             </p>
           )}
           {error && <p className="small text-danger mt-2 mb-0">{error}</p>}

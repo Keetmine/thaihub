@@ -9922,3 +9922,19 @@ a.profile-friend-more:hover {
 .facts-table tr.is-edit > td {
   background: rgba(210, 153, 34, 0.1);
 }
+
+/* Поля таблицы фактов: у form-control-sm в ячейке таблицы текст
+   прилипал к низу — ячейка добавляла свой отступ, а высота поля шла от
+   rows. Поле растёт по тексту, отступы ровные со всех сторон. */
+.facts-table > :not(caption) > * > * {
+  padding: 0.45rem 0.5rem;
+  vertical-align: top;
+}
+.facts-input {
+  display: block;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.6rem;
+  line-height: 1.45;
+  resize: vertical;
+  field-sizing: content;
+}

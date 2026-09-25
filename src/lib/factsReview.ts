@@ -86,7 +86,7 @@ export async function applyFactsReview(id: string, en: string[], ru: string[]): 
   if (!r) throw new Error("Запись не найдена");
   if (r.status !== "PENDING") throw new Error("Запись уже разобрана");
   if (en.length === 0) throw new Error("Список фактов пуст");
-  if (en.length !== ru.length) throw new Error("Английский и русский списки не сходятся");
+  if (en.length !== ru.length) throw new Error("Английский и русский списки не сходятся по числу строк");
 
   const p = await prisma.performer.findUnique({
     where: { id: r.performerId },
