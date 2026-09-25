@@ -105,6 +105,23 @@ export async function importMdlPerformer(
       data.photoUrl = photoUrl;
       filled.push("фото");
     }
+    // Гражданство, пол и альтернативное имя раньше не писались вовсе —
+    // ни здесь, ни при заведении новой карточки. Импорт отчитывался
+    // успехом, а поля оставались пустыми (жалоба владельца 2026-09-25:
+    // «запустила импорт, а инфу не подтянуло»). Дозаполняем только
+    // пустое, как и остальные поля этого импортёра.
+    if (!existing.nationality && person.nationality) {
+      data.nationality = person.nationality;
+      filled.push("гражданство");
+    }
+    if (!existing.gender && person.gender) {
+      data.gender = person.gender;
+      filled.push("пол");
+    }
+    if (!existing.alsoKnownAs && person.alsoKnownAs) {
+      data.alsoKnownAs = person.alsoKnownAs;
+      filled.push("другие имена");
+    }
     if (!existing.mydramalistUrl) data.mydramalistUrl = person.url;
     if (Object.keys(data).length > 0) {
       await prisma.performer.update({ where: { id: existing.id }, data });
@@ -121,6 +138,9 @@ export async function importMdlPerformer(
         realName,
         birthDate: person.born,
         bio: person.bio,
+        nationality: person.nationality,
+        gender: person.gender,
+        alsoKnownAs: person.alsoKnownAs,
         photoUrl,
         mydramalistUrl: person.url,
       },

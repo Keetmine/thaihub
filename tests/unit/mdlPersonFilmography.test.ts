@@ -34,4 +34,33 @@ assert.ok(
 const movie = person.filmography.find((r) => r.section === "Movie");
 assert.equal(movie?.title, "2gether: The Movie", "фильм читается со своей строки");
 
+// Глухая заглушка (ни JSON-LD, ни og:title) — разбор честно падает.
+assert.throws(
+  () =>
+    parseMdlPersonPage(
+      "<html><head><title>Access denied</title></head><body><h1>Blocked</h1></body></html>",
+      "https://mydramalist.com/people/25209-mark",
+    ),
+  /Не удалось разобрать страницу человека/,
+  "без имени страница за карточку не выдаётся",
+);
+
+// А вот НЕДОГРУЖЕННАЯ страница куда опаснее: head с настоящим og:title
+// уже приехал, тела ещё нет — разбор не падает, имя есть, а внутри
+// пусто. Импорт актёра принимал такое за успех и отчитывался «обновлён,
+// новых полей нет», записав одну ссылку на MDL (жалоба владельца
+// 2026-09-25: у Mark Sorntast Buangam на MDL 34 строки фильмографии, у
+// нас не привязалось ничего). Поэтому загрузчик в mydramalist.ts ждёт
+// не смены заголовка, а размера страницы — по содержимому такую
+// половинку от настоящей карточки не отличить, что и проверяем здесь.
+const partial = parseMdlPersonPage(
+  '<html><head><meta property="og:title" content="Mark Sorntast Buangam" />' +
+    "<title>Mark Sorntast Buangam</title></head><body></body></html>",
+  "https://mydramalist.com/people/25209-mark",
+);
+assert.equal(partial.name, "Mark Sorntast Buangam", "имя берётся из og:title и разбор не падает");
+assert.equal(partial.born, null, "но даты рождения нет");
+assert.equal(partial.bio, null, "и биографии");
+assert.equal(partial.filmography.length, 0, "и фильмографии");
+
 console.log("mdlPersonFilmography: ok");

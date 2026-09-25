@@ -305,7 +305,17 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
  *  (`MdlRunFetcher` в src/lib/mdlClient.ts). Проверку хоста делает сам
  *  fetch. */
 export async function fetchMdlDrama(url: string): Promise<MdlDrama> {
-  return parseMdlDramaPage(await fetchMdlHtml(url), url);
+  const drama = parseMdlDramaPage(await fetchMdlHtml(url), url);
+  // Карточка без названия — это не сериал без названия, а страница,
+  // которой мы не получили (заглушка Cloudflare, сменившаяся
+  // разметка). Та же защита, что у fetchMdlPerson: молча заводить
+  // пустую запись хуже, чем честно упасть.
+  if (!drama.title) {
+    throw new Error(
+      "MyDramaList не отдал карточку сериала (похоже на заглушку Cloudflare) — попробуйте ещё раз",
+    );
+  }
+  return drama;
 }
 
 // ---------- расписание серий ----------
@@ -601,6 +611,11 @@ export function parseMdlPersonPage(html: string, url: string): MdlPerson {
 
 const MDL_CHALLENGE = /Just a moment|challenges\.cloudflare\.com/i;
 
+/** Ниже этого размера страница MDL — почти наверняка заглушка
+ *  Cloudflare, а не контент: настоящие отдаются сотнями килобайт.
+ *  Порог тот же, что в `MdlClient.passChallenge` (lib/mdlClient.ts). */
+const MDL_MIN_PAGE_BYTES = 20000;
+
 const MDL_BLOCKED_MESSAGE =
   "MyDramaList закрыл доступ Cloudflare-проверкой — попробуйте позже " +
   "или запустите импорт с машины, которую MDL пропускает";
@@ -799,14 +814,33 @@ async function fetchMdlHtml(url: string): Promise<string> {
     try {
       const page = await browser.newPage({ userAgent: MDL_UA });
       await page.goto(url, { waitUntil: "commit", timeout: 45000 });
+      // Ждём не «заголовок сменился», а «страница действительно
+      // приехала». Раньше цикл выходил по заголовку, и `page.content()`
+      // хватал ДОГРУЖАЮЩИЙСЯ документ: head с настоящим og:title уже
+      // есть, а тела ещё нет. Разбор такой страницы не падал — имя
+      // бралось из og:title, — но ни даты рождения, ни биографии, ни
+      // фильмографии в ней не было, и импорт актёра отчитывался
+      // «обновлён, новых полей нет», записав одну ссылку на MDL
+      // (жалоба владельца 2026-09-25 про карточку Mark Sorntast
+      // Buangam: на MDL 34 строки фильмографии, у нас не привязалось
+      // ничего).
+      //
+      // Признак готовности — размер: настоящая страница MDL это сотня с
+      // лишним килобайт. Тот же порог отсекает и глухую заглушку
+      // Cloudflare без надписи «Just a moment» (в MdlClient.passChallenge
+      // он стоит ровно для этого).
+      let html = "";
       for (let i = 0; i < 15; i++) {
         await page.waitForTimeout(2000);
-        const title = await page.title().catch(() => "");
-        if (!MDL_CHALLENGE.test(title)) break;
+        if (MDL_CHALLENGE.test(await page.title().catch(() => ""))) continue;
+        html = await page.content();
+        if (!MDL_CHALLENGE.test(html.slice(0, 3000)) && html.length > MDL_MIN_PAGE_BYTES) {
+          return html;
+        }
       }
-      const html = await page.content();
-      if (!MDL_CHALLENGE.test(html.slice(0, 3000))) return html;
-      lastError = "Cloudflare-проверка не пройдена";
+      lastError = html
+        ? "страница не догрузилась (Cloudflare или медленный ответ)"
+        : "Cloudflare-проверка не пройдена";
     } catch (e) {
       lastError = e instanceof Error ? e.message.split("\n")[0] : String(e);
     } finally {
@@ -819,7 +853,19 @@ async function fetchMdlHtml(url: string): Promise<string> {
 }
 
 export async function fetchMdlPerson(url: string): Promise<MdlPerson> {
-  return parseMdlPersonPage(await fetchMdlHtml(url), url);
+  const person = parseMdlPersonPage(await fetchMdlHtml(url), url);
+  // Пустая карточка — это не «на MDL про человека ничего нет», а
+  // страница, которой мы не получили: заглушка Cloudflare, редирект,
+  // сменившаяся разметка. Раньше такое молча уезжало дальше, и импорт
+  // отчитывался успехом, записав одну ссылку на MDL и больше ничего
+  // (жалоба владельца 2026-09-25). Лучше честная ошибка и «попробуйте
+  // ещё раз»: со второй попытки Cloudflare обычно пропускает.
+  if (!person.name && !person.born && !person.bio && person.filmography.length === 0) {
+    throw new Error(
+      "MyDramaList не отдал карточку человека (похоже на заглушку Cloudflare) — попробуйте ещё раз",
+    );
+  }
+  return person;
 }
 
 // ---------- поиск ----------
