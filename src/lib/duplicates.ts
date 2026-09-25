@@ -527,6 +527,51 @@ function fillBlanks<T extends Record<string, unknown>>(
   return data;
 }
 
+/**
+ * Переводы при слиянии дублей (жалоба владельца 2026-09-26: «слила два
+ * дубля — русский перевод не подтянулся»). `translations` — json вида
+ * `{ ru: { bio: "…", trivia: [...] } }`: сливаем по языку и по полю,
+ * выживший главнее, у проигравшего берём только то, чего у выжившего
+ * нет. Раньше json в список дозаполняемых полей не входил вовсе, и
+ * перевод проигравшего пропадал вместе с его записью.
+ */
+export function mergeTranslations(keeper: unknown, loser: unknown): Record<string, Record<string, unknown>> | null {
+  const k = (keeper && typeof keeper === "object" ? keeper : {}) as Record<string, Record<string, unknown>>;
+  const l = (loser && typeof loser === "object" ? loser : {}) as Record<string, Record<string, unknown>>;
+  const out: Record<string, Record<string, unknown>> = {};
+  let changed = false;
+  for (const locale of new Set([...Object.keys(k), ...Object.keys(l)])) {
+    const kl = { ...(k[locale] ?? {}) };
+    for (const [field, value] of Object.entries(l[locale] ?? {})) {
+      const has = kl[field];
+      const empty = has == null || has === "" || (Array.isArray(has) && has.length === 0);
+      const given = value != null && value !== "" && !(Array.isArray(value) && value.length === 0);
+      if (empty && given) {
+        kl[field] = value;
+        changed = true;
+      }
+    }
+    out[locale] = kl;
+  }
+  return changed ? out : null;
+}
+
+/** Отметки «текст наш» (TextRewrite) проигравшего — на выжившего, если
+ *  у того по этому полю своей нет; иначе удаляем: запись проигравшего
+ *  исчезает, и отметка без хозяина только сбивала бы счётчики. */
+async function moveTextRewrites(tx: Prisma.TransactionClient, entity: string, keeperId: string, loserId: string) {
+  const rows = await tx.textRewrite.findMany({ where: { entity, entityId: loserId } });
+  for (const r of rows) {
+    const taken = await tx.textRewrite.findUnique({
+      where: { entity_entityId_field: { entity, entityId: keeperId, field: r.field } },
+    });
+    if (!taken) {
+      await tx.textRewrite.create({ data: { ...r, entityId: keeperId } });
+    }
+  }
+  await tx.textRewrite.deleteMany({ where: { entity, entityId: loserId } });
+}
+
 /** Подписи выжившего и проигравших для строки истории. */
 async function mergedLabels(
   model: "drama" | "agency" | "performer",
@@ -580,7 +625,12 @@ export async function mergeDramas(keeperId: string, loserIds: string[]) {
           "director", "screenwriter", "genres", "tags", "episodes",
           "airedFrom", "airedTo", "airedOn", "duration", "contentRating",
           "mdlScore", "mydramalistUrl", "trailerUrl", "agencyId", "novelId",
-        ] as (keyof typeof keeper)[]);
+          // Тексты и русские поля — раньше в списке не было, и при
+          // слиянии русское название и описание дубля пропадали.
+          // Своего json с переводами у сериала нет: русское — это колонки
+          // titleRu и synopsisRu выше.
+          "synopsis", "synopsisRu", "titleRu", "status", "network",
+        ] as (keyof typeof keeper)[]) as Record<string, unknown>;
         if (Object.keys(data).length > 0) {
           await tx.drama.update({
             where: { id: keeperId },
@@ -588,6 +638,7 @@ export async function mergeDramas(keeperId: string, loserIds: string[]) {
           });
         }
       }
+      await moveTextRewrites(tx, "drama", keeperId, loserId);
 
       await reassignJoinRows(tx.performerDrama, "dramaId", "performerId", keeperId, loserId);
       await reassignJoinRows(tx.dramaWatchStatus, "dramaId", "userId", keeperId, loserId);
@@ -616,7 +667,9 @@ export async function mergeAgencies(keeperId: string, loserIds: string[]) {
         tx.agency.findUnique({ where: { id: loserId } }),
       ]);
       if (keeper && loser) {
-        const data = fillBlanks(keeper, loser, ["logoUrl", "description"] as (keyof typeof keeper)[]);
+        const data = fillBlanks(keeper, loser, ["logoUrl", "description"] as (keyof typeof keeper)[]) as Record<string, unknown>;
+        const translations = mergeTranslations(keeper.translations, loser.translations);
+        if (translations) data.translations = translations;
         if (Object.keys(data).length > 0) {
           // `as never`: fillBlanks возвращает срез строки таблицы, и с
           // появлением json-колонки `translations` её тип перестал
@@ -653,7 +706,10 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
           "occupation", "instruments", "soloDebut", "height", "weight",
           "mvAppearances", "trivia", "awards", "references", "sourceUrl",
           "mydramalistUrl", "musicFestivalUrl",
-        ] as (keyof typeof keeper)[]);
+          "bloodType", "mbti", "signatureUrl", "kprofilesUrl",
+        ] as (keyof typeof keeper)[]) as Record<string, unknown>;
+        const translations = mergeTranslations(keeper.translations, loser.translations);
+        if (translations) data.translations = translations;
         // musicFestivalUrl уникален: пока проигравший жив, адрес нельзя
         // повторить у выжившего — сначала снимаем его с проигравшего.
         if ("musicFestivalUrl" in data) {

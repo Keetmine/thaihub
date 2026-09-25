@@ -3,6 +3,7 @@ import {
   nicknamePrefixGroups,
   fullNameInclusionPairs,
   sameRealNamePairs,
+  mergeTranslations,
 } from "../../src/lib/duplicates";
 
 // Сетка «ник приклеен к имени» на странице дублей
@@ -202,5 +203,26 @@ assert.deepEqual(
   [],
   "одинаковые имена — это другой случай (точные тёзки), не для этого прогона",
 );
+
+// ---------- mergeTranslations: переводы при слиянии ----------
+// Жалоба владельца 2026-09-26: «слила два дубля — русский перевод не
+// подтянулся». Выживший главнее, у проигравшего берём недостающее.
+assert.deepEqual(
+  mergeTranslations(null, { ru: { bio: "Био", trivia: ["Факт"] } }),
+  { ru: { bio: "Био", trivia: ["Факт"] } },
+  "у выжившего переводов нет — берём у проигравшего целиком",
+);
+assert.deepEqual(
+  mergeTranslations({ ru: { bio: "Своё" } }, { ru: { bio: "Чужое", trivia: ["Факт"] } }),
+  { ru: { bio: "Своё", trivia: ["Факт"] } },
+  "своё не перетирается, недостающее дописывается",
+);
+assert.deepEqual(
+  mergeTranslations({ ru: { trivia: [] } }, { ru: { trivia: ["Факт"] } }),
+  { ru: { trivia: ["Факт"] } },
+  "пустой список считается пустым",
+);
+assert.equal(mergeTranslations({ ru: { bio: "Своё" } }, { ru: { bio: "Чужое" } }), null, "дописывать нечего — null");
+assert.equal(mergeTranslations(null, null), null);
 
 console.log("duplicates: все проверки прошли");
