@@ -666,6 +666,19 @@ export default async function PerformerPage({
     </>
   );
 
+  const triviaInMain = careerItems.length < 2;
+  const triviaBlock =
+    trivia.length > 0 ? (
+      <div className="surface p-4 mb-3">
+        <h2 className="section-heading mb-2">{t.catalog.artist.trivia}</h2>
+        <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
+          {trivia.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
   return (
     <div>
       {/* Конфетти — клиентское и одноразовое, само снимается через
@@ -1357,9 +1370,14 @@ export default async function PerformerPage({
           карьеры, и вместе они занимают один экран вместо двух.
 
           Ниже 992px колонки складываются в одну (.artist-lower). */}
+      {/* Факты — справа, над клипами и наградами. Но «Путь артиста»
+          рисуется от двух событий (CareerTimeline), и без него левая
+          колонка оставалась пустой, а факты висели справа от дыры
+          (правка владельца 2026-09-26). Тогда факты встают слева. */}
       <div className="artist-lower">
       <div className="artist-lower-main">
         <CareerTimeline items={careerItems} />
+        {triviaInMain && triviaBlock}
       </div>
 
       <div className="artist-lower-side">
@@ -1371,16 +1389,7 @@ export default async function PerformerPage({
           назад под сериалы и будем выводить над наградами». Первыми в
           колонке, а не последними: это единственное человеческое на
           странице, и за наградами оно снова ушло бы на пятый экран. */}
-      {trivia.length > 0 && (
-        <div className="surface p-4 mb-3">
-          <h2 className="section-heading mb-2">{t.catalog.artist.trivia}</h2>
-          <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
-            {trivia.map((item, i) => (
-              <li key={i}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {!triviaInMain && triviaBlock}
 
       {mvAppearances.length > 0 && (
         <div className="surface p-4 mb-3">
