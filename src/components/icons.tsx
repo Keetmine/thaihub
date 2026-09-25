@@ -886,3 +886,25 @@ export function EyeIcon({ filled = false, className }: { filled?: boolean; class
     </svg>
   );
 }
+
+/** Рост и вес в карточке артиста. */
+export function RulerIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg viewBox="0 0 24 24" width="0.95em" height="0.95em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4z" />
+      <path d="m14 6 2 2" />
+      <path d="m11 9 2 2" />
+      <path d="m8 12 2 2" />
+      <path d="m5 15 2 2" />
+    </svg>
+  );
+}
+
+/** Группа крови в карточке артиста. */
+export function DropIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg viewBox="0 0 24 24" width="0.95em" height="0.95em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M12 2.7 6.8 9.3a6.5 6.5 0 1 0 10.4 0L12 2.7z" />
+    </svg>
+  );
+}

@@ -102,6 +102,9 @@ export default function PerformerForm({
     soloDebut?: string;
     height?: string;
     weight?: string;
+    bloodType?: string;
+    mbti?: string;
+    signatureUrl?: string;
     mvAppearances?: string;
     trivia?: string;
     links: PerformerLinkInput[];
@@ -538,6 +541,20 @@ export default function PerformerForm({
             <div className="col-6 col-md-4">
               <label className="form-label" htmlFor="performer-form-weight">Вес</label>
               <input id="performer-form-weight" name="weight" defaultValue={v?.weight} placeholder="65 kg" className="form-control" />
+            </div>
+            {/* Группа крови, MBTI и автограф — поля из профилей kprofiles
+                (2026-09-26). Автограф — адрес картинки, как фото. */}
+            <div className="col-6 col-md-4">
+              <label className="form-label" htmlFor="performer-form-bloodType">Группа крови</label>
+              <input id="performer-form-bloodType" name="bloodType" defaultValue={v?.bloodType} placeholder="O, A, B, AB" className="form-control" />
+            </div>
+            <div className="col-6 col-md-4">
+              <label className="form-label" htmlFor="performer-form-mbti">MBTI</label>
+              <input id="performer-form-mbti" name="mbti" defaultValue={v?.mbti} placeholder="INFP" className="form-control" />
+            </div>
+            <div className="col-12 col-md-8">
+              <label className="form-label" htmlFor="performer-form-signatureUrl">Автограф (адрес картинки)</label>
+              <input id="performer-form-signatureUrl" name="signatureUrl" defaultValue={v?.signatureUrl} placeholder="/uploads/signatures/….webp" className="form-control" />
             </div>
             <div className="col-12 col-md-6">
               <label className="form-label" htmlFor="performer-form-mvAppearances">Появления в клипах</label>

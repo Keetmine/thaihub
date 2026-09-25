@@ -347,3 +347,123 @@ export function normalizeKpProfile(p: KpProfile): KpNormalized {
     facts: p.facts,
   };
 }
+
+// ---------- сопоставление с каталогом ----------
+
+/** Строка нашего каталога, достаточная для сопоставления. */
+export type KpCatalogRow = {
+  id: string;
+  name: string;
+  realName: string | null;
+  alsoKnownAs: string | null;
+  /** Хэндлы инстаграма из ссылок карточки, в нижнем регистре. */
+  instagram: string[];
+};
+
+export type KpMatch =
+  | { performerId: string; via: "instagram" | "realName" | "nickname" | "tokens" }
+  | { performerId: null; via: "ambiguous" | "none"; candidates: string[] };
+
+const compact = (s: string | null | undefined) =>
+  (s ?? "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/[^a-z]/g, "");
+const tokens = (s: string | null | undefined) =>
+  (s ?? "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[^a-z ]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 1);
+
+/**
+ * Кто из каталога — этот человек с kprofiles. Признаки по убыванию
+ * надёжности, первый сработавший и решает:
+ *
+ *  1. **инстаграм** — хэндл уникален, тёзки исключены;
+ *  2. **настоящее имя** целиком, без пробелов и дефисов («Chiva-aree»
+ *     ↔ «Chivaaree»); при нескольких тёзках — неоднозначно;
+ *  3. **все слова** более короткого настоящего имени входят в более
+ *     длинное («Rebecca Armstrong» ⊂ «Rebecca Patricia Armstrong»);
+ *  4. **ник + фамилия**: на kprofiles нет строки Birth Name, а в stage
+ *     name — «Jeff Satur»; у нас name «Jeff» и realName «… Satur».
+ *
+ * Единственный ник без фамилии сопоставляется, только если он у нас
+ * один: «Noeul» — да, «Boss» — нет (их четверо). Несовпавшее и
+ * неоднозначное уходит владельцу глазами, а не в базу.
+ */
+export function matchKpToCatalog(
+  profile: { stageName: string | null; birthName: string | null; socials: KpSocial[] },
+  rows: KpCatalogRow[],
+): KpMatch {
+  const ig = profile.socials.find((s) => s.platform === "instagram")?.handle.toLowerCase();
+  if (ig) {
+    const hit = rows.filter((r) => r.instagram.includes(ig));
+    if (hit.length === 1) return { performerId: hit[0].id, via: "instagram" };
+  }
+
+  const bc = compact(profile.birthName);
+  const bt = tokens(profile.birthName);
+  const sc = compact(profile.stageName);
+  if (bc.length >= 6) {
+    // Полное имя может лежать и в name целиком — «Becky Rebecca Patricia
+    // Armstrong» с пустым realName: карточка заведена парсером одной строкой.
+    const exact = rows.filter(
+      (r) => compact(r.realName) === bc || compact(r.name) === bc || (sc && compact(r.name) === sc + bc),
+    );
+    if (exact.length === 1) return { performerId: exact[0].id, via: "realName" };
+    if (exact.length > 1) return { performerId: null, via: "ambiguous", candidates: exact.map((r) => r.name) };
+
+    if (bt.length >= 2) {
+      const sub = rows.filter((r) => {
+        // У карточек без realName имя часто и есть полное имя.
+        const rt = r.realName ? tokens(r.realName) : tokens(r.name);
+        if (rt.length < 2) return false;
+        const [short, long] = rt.length <= bt.length ? [rt, bt] : [bt, rt];
+        return short.every((t) => long.includes(t));
+      });
+      if (sub.length === 1) return { performerId: sub[0].id, via: "tokens" };
+      if (sub.length > 1) return { performerId: null, via: "ambiguous", candidates: sub.map((r) => r.name) };
+    }
+  }
+
+  const st = tokens(profile.stageName);
+  if (st.length >= 2) {
+    const nick = compact(st[0]);
+    const rest = st.slice(1);
+    const hit = rows.filter(
+      (r) => compact(r.name) === nick && rest.every((t) => tokens(r.realName).includes(t)),
+    );
+    if (hit.length === 1) return { performerId: hit[0].id, via: "nickname" };
+    if (hit.length > 1) return { performerId: null, via: "ambiguous", candidates: hit.map((r) => r.name) };
+  }
+  if (st.length === 1 && !profile.birthName) {
+    const hit = rows.filter((r) => compact(r.name) === compact(st[0]));
+    if (hit.length === 1) return { performerId: hit[0].id, via: "nickname" };
+    if (hit.length > 1) return { performerId: null, via: "ambiguous", candidates: hit.map((r) => r.name) };
+  }
+  // 5. Ник совпал И фамилия совпала — транслитерация имени гуляет
+  //    («Natasitt» ↔ «Natasit», «Chanikan» ↔ «Chanikarn»), а ник с
+  //    фамилией вместе уникальны. Ник сравниваем с первым словом name
+  //    («Gena Desouza» — name из двух слов), фамилию — с последним
+  //    словом realName или name.
+  const surnameOf = (r: KpCatalogRow) => tokens(r.realName).at(-1) ?? tokens(r.name).at(-1);
+  const kpSurname = bt.at(-1);
+  const kpNick = st[0] ? compact(st[0]) : "";
+  if (kpNick && kpSurname && kpSurname.length >= 5) {
+    const hit = rows.filter((r) => {
+      const nick = compact(tokens(r.name)[0] ?? "");
+      return nick === kpNick && surnameOf(r) === kpSurname;
+    });
+    if (hit.length === 1) return { performerId: hit[0].id, via: "nickname" };
+    if (hit.length > 1) return { performerId: null, via: "ambiguous", candidates: hit.map((r) => r.name) };
+  }
+
+  // Не нашли — но подскажем, на кого похоже: общая фамилия (последнее
+  // слово настоящего имени) с кем-то из каталога. Это не совпадение, а
+  // список для глаз владельца: заводить новую карточку или это тёзка.
+  const surname = bt.at(-1) ?? (st.length >= 2 ? st.at(-1) : undefined);
+  const similar =
+    surname && surname.length >= 5
+      ? rows.filter((r) => tokens(r.realName).includes(surname) || tokens(r.name).includes(surname))
+      : [];
+  return { performerId: null, via: "none", candidates: similar.slice(0, 5).map((r) => `${r.name}${r.realName ? ` (${r.realName})` : ""}`) };
+}

@@ -164,6 +164,9 @@ export default async function EditPerformerPage({
             soloDebut: performer.soloDebut ?? "",
             height: performer.height ?? "",
             weight: performer.weight ?? "",
+            bloodType: performer.bloodType ?? "",
+            mbti: performer.mbti ?? "",
+            signatureUrl: performer.signatureUrl ?? "",
             mvAppearances: performer.mvAppearances.join("\n"),
             trivia: performer.trivia.join("\n"),
             // kind обязателен: по нему форма раскладывает ссылки на

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   kpPlaceOfBirth,
   kpSocials,
+  matchKpToCatalog,
   normalizeKpProfile,
   parseKpBirthday,
   parseKpBloodType,
@@ -75,5 +76,39 @@ assert.equal(n.bloodType, "O");
 assert.equal(n.mbti, null, "N/A → пусто");
 assert.equal(n.placeOfBirth, "Lopburi, Thailand");
 assert.equal(n.socials.find((s) => s.platform === "instagram")?.handle, "mark_sorntast");
+
+// ---------- сопоставление с каталогом ----------
+const rows = [
+  { id: "bright", name: "Bright", realName: "Vachirawit Chiva-aree", alsoKnownAs: null, instagram: ["bbrightvc"] },
+  { id: "jeff", name: "Jeff", realName: "Worakamol Satur", alsoKnownAs: null, instagram: [] },
+  { id: "becky", name: "Becky", realName: "Rebecca Armstrong", alsoKnownAs: null, instagram: [] },
+  { id: "boss1", name: "Boss", realName: "Chaikamon Sermsongwittaya", alsoKnownAs: null, instagram: [] },
+  { id: "boss2", name: "Boss", realName: "Pongpak Pimsarn", alsoKnownAs: null, instagram: [] },
+  { id: "noeul", name: "Noeul", realName: "Nuttarat Tangwai", alsoKnownAs: null, instagram: [] },
+];
+const m = (stageName: string | null, birthName: string | null, ig?: string) =>
+  matchKpToCatalog({ stageName, birthName, socials: ig ? [{ platform: "instagram", handle: ig }] : [] }, rows);
+
+assert.deepEqual(m("Bright", "Somebody Else", "BBrightVC"), { performerId: "bright", via: "instagram" }, "инстаграм — сильнее имени");
+assert.deepEqual(m("Bright", "Vachirawit Chivaaree"), { performerId: "bright", via: "realName" }, "дефис в имени не мешает");
+assert.deepEqual(m("Becky", "Rebecca Patricia Armstrong"), { performerId: "becky", via: "tokens" }, "имя с отчеством ⊃ имя без");
+assert.deepEqual(m("Jeff Satur", null), { performerId: "jeff", via: "nickname" }, "ник + фамилия без строки Birth Name");
+assert.deepEqual(m("Noeul", null), { performerId: "noeul", via: "nickname" }, "одинокий ник — только если он у нас один");
+assert.equal(m("Boss", null).performerId, null, "«Boss» — их несколько, не угадываем");
+assert.equal(m("Boss", null).via, "ambiguous");
+assert.equal(m("Ryujin", "Tinnapat Tusnytraitrep").via, "none", "незнакомый — новая карточка");
+const rows2 = [...rows, { id: "nat", name: "Nat", realName: "Natasit Uareksit", alsoKnownAs: null, instagram: [] }];
+assert.equal(
+  matchKpToCatalog({ stageName: "Nat", birthName: "Natasitt Uareksit", socials: [] }, rows2).performerId,
+  "nat",
+  "ник + фамилия совпали — транслитерация имени не мешает",
+);
+assert.equal(
+  matchKpToCatalog({ stageName: "Mew", birthName: "Chisanucha Tantimedh", socials: [] }, [
+    ...rows, { id: "mewS", name: "Mew", realName: "Suppasit Jongcheveevat", alsoKnownAs: null, instagram: [] },
+  ]).performerId,
+  null,
+  "тот же ник, другая фамилия — не наш человек",
+);
 
 console.log("kprofiles: ok");

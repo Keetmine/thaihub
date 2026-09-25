@@ -16,6 +16,7 @@ import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import SocialLinkIcons from "@/components/SocialLinkIcons";
+import UploadImage from "@/components/UploadImage";
 import SubTabs from "@/components/SubTabs";
 import {
   getFavoritedEventIds,
@@ -39,6 +40,11 @@ import {
   PinIcon,
   MusicNoteIcon,
   UserIcon,
+  TagIcon,
+  CalendarIcon,
+  RulerIcon,
+  DropIcon,
+  InfoIcon,
 } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
 import SeenLiveButton from "@/components/SeenLiveButton";
@@ -563,6 +569,9 @@ export default async function PerformerPage({
     !!soloDebut ||
     !!performer.height ||
     !!performer.weight ||
+    !!performer.bloodType ||
+    !!performer.mbti ||
+    !!performer.signatureUrl ||
     performer.agencies.length > 0 ||
     !!bio ||
     otherLinks.length > 0 ||
@@ -771,6 +780,29 @@ export default async function PerformerPage({
           style={{ minWidth: 0 }}
         >
           {!displayPhoto && <SocialLinkIcons items={socialItems} />}
+          {/* Агентство — первой строкой (правка владельца 2026-09-26): по
+              нему артиста и узнают, остальное — детали. */}
+          {performer.agencies.length > 0 && (
+            <p className="small text-secondary mb-0">
+              <BuildingIcon />{" "}
+              <span className="text-secondary">
+                {performer.agencies.length > 1
+                  ? t.catalog.artist.agencies
+                  : t.catalog.artist.agency}
+              </span>{" "}
+              {performer.agencies.map((pa, i) => (
+                <span key={pa.agencyId}>
+                  <AppLink
+                    href={agencyHref(pa.agency)}
+                    className="link-body-emphasis"
+                  >
+                    {pa.agency.name}
+                  </AppLink>
+                  {i < performer.agencies.length - 1 ? ", " : ""}
+                </span>
+              ))}
+            </p>
+          )}
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
               <CakeIcon />{" "}
@@ -809,24 +841,28 @@ export default async function PerformerPage({
           )}
           {performer.occupation.length > 0 && (
             <p className="small text-secondary mb-0">
+              <TagIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.catalog.artist.occupation}</span>{" "}
               {performer.occupation.map((o) => contentDict.occupation(o)).join(", ")}
             </p>
           )}
           {performer.instruments.length > 0 && (
             <p className="small text-secondary mb-0">
+              <MusicNoteIcon />{" "}
               <span className="text-secondary">{t.catalog.artist.instruments}</span>{" "}
               {performer.instruments.map((i) => contentDict.instrument(i)).join(", ")}
             </p>
           )}
           {soloDebut && (
             <p className="small text-secondary mb-0">
+              <CalendarIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.catalog.artist.soloDebut}</span>{" "}
               {soloDebut}
             </p>
           )}
           {(performer.height || performer.weight) && (
             <p className="small text-secondary mb-0">
+              <RulerIcon className="icon-inline" />{" "}
               {performer.height && (
                 <>
                   <span className="text-secondary">{t.catalog.artist.height}</span>{" "}
@@ -842,26 +878,40 @@ export default async function PerformerPage({
               )}
             </p>
           )}
-          {performer.agencies.length > 0 && (
+          {/* Группа крови и MBTI — из профилей kprofiles (2026-09-26): в
+              тайском фандоме это такие же привычные строки карточки, как
+              рост и вес, и стоят они рядом. */}
+          {!isBand && (performer.bloodType || performer.mbti) && (
             <p className="small text-secondary mb-0">
-              <BuildingIcon />{" "}
-              <span className="text-secondary">
-                {performer.agencies.length > 1
-                  ? t.catalog.artist.agencies
-                  : t.catalog.artist.agency}
-              </span>{" "}
-              {performer.agencies.map((pa, i) => (
-                <span key={pa.agencyId}>
-                  <AppLink
-                    href={agencyHref(pa.agency)}
-                    className="link-body-emphasis"
-                  >
-                    {pa.agency.name}
-                  </AppLink>
-                  {i < performer.agencies.length - 1 ? ", " : ""}
-                </span>
-              ))}
+              {performer.bloodType && (
+                <>
+                  <DropIcon className="icon-inline" />{" "}
+                  <span className="text-secondary">{t.catalog.artist.bloodType}</span>{" "}
+                  {performer.bloodType}
+                </>
+              )}
+              {performer.bloodType && performer.mbti && " · "}
+              {performer.mbti && (
+                <>
+                  <InfoIcon className="icon-inline" />{" "}
+                  <span className="text-secondary">{t.catalog.artist.mbti}</span>{" "}
+                  {performer.mbti}
+                </>
+              )}
             </p>
+          )}
+          {/* Автограф — картинка с профиля kprofiles; есть у единиц, поэтому
+              не в сетке полей, а отдельной небольшой картинкой. */}
+          {!isBand && performer.signatureUrl && (
+            <figure className="mb-0 mt-1">
+              <UploadImage
+                src={performer.signatureUrl}
+                alt={`${performer.name} — ${t.catalog.artist.signature}`}
+                sizes="11rem"
+                style={{ maxWidth: "11rem", maxHeight: "5rem", objectFit: "contain" }}
+              />
+              <figcaption className="small text-secondary">{t.catalog.artist.signature}</figcaption>
+            </figure>
           )}
           {/* Длинная биография свёрнута до ~4 строк, как синопсис у
               сериала: текст в summary, details[open] снимает line-clamp,

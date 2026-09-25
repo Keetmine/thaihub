@@ -262,6 +262,9 @@ function getMusicProfileFields(formData: FormData) {
     soloDebut: text("soloDebut"),
     height: text("height"),
     weight: text("weight"),
+    bloodType: text("bloodType")?.toUpperCase() ?? null,
+    mbti: text("mbti")?.toUpperCase() ?? null,
+    signatureUrl: text("signatureUrl"),
     mvAppearances: lines("mvAppearances"),
     trivia: lines("trivia"),
   };
@@ -533,6 +536,7 @@ export async function updatePerformer(id: string, formData: FormData) {
           "name", "type", "realName", "musicAlias", "alsoKnownAs", "nationality",
           "gender", "birthDate", "placeOfBirth", "bio", "photoUrl", "mydramalistUrl",
           "agencyIds", "occupation", "instruments", "soloDebut", "height", "weight",
+          "bloodType", "mbti", "signatureUrl",
           "mvAppearances", "trivia",
         ],
       ),
