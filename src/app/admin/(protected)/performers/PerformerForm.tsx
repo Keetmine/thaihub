@@ -471,27 +471,29 @@ export default function PerformerForm({
         {type === "SOLO" && (
           <FormSection title="Внешность и характер" icon={<EyeIcon />} tone="purple">
           <div className="row g-3">
-          <div className="col-12 col-lg-9">
+          {/* Два ряда по два поля — по высоте вровень с автографом справа
+              (правка владельца 2026-09-26). */}
+          <div className="col-12 col-md-7 col-lg-8">
           <div className="row g-2">
-            <div className="col-6 col-md-3">
+            <div className="col-6">
               <label className="form-label" htmlFor="performer-form-height">Рост</label>
               <input id="performer-form-height" name="height" defaultValue={v?.height} placeholder="175 cm" className="form-control" />
             </div>
-            <div className="col-6 col-md-3">
+            <div className="col-6">
               <label className="form-label" htmlFor="performer-form-weight">Вес</label>
               <input id="performer-form-weight" name="weight" defaultValue={v?.weight} placeholder="65 kg" className="form-control" />
             </div>
-            <div className="col-6 col-md-3">
+            <div className="col-6">
               <label className="form-label" htmlFor="performer-form-bloodType">Группа крови</label>
               <input id="performer-form-bloodType" name="bloodType" defaultValue={v?.bloodType} placeholder="O, A, B, AB" className="form-control" />
             </div>
-            <div className="col-6 col-md-3">
+            <div className="col-6">
               <label className="form-label" htmlFor="performer-form-mbti">MBTI</label>
               <input id="performer-form-mbti" name="mbti" defaultValue={v?.mbti} placeholder="INFP" className="form-control" />
             </div>
           </div>
           </div>
-          <div className="col-12 col-lg-3">
+          <div className="col-12 col-md-5 col-lg-4">
             <FileDropzone name="signatureUrl" label="Автограф" defaultValue={v?.signatureUrl} wide />
           </div>
           </div>
