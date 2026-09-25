@@ -207,6 +207,19 @@ export type TpopMemberData = {
   photoUrl: string | null;
   /** Официальные соцсети из инфобокса — см. infoboxSocialLinks. */
   socialLinks: string[];
+  // Поля ниже появились 2026-09-26 (жалоба владельца: «прогнала группу
+  // PROXIE — по ссылкам на участников прошлось, но инфу не дозаполнило»).
+  // Инфобокс участника их давно отдаёт, а разбор брал только имя,
+  // даты, фото и агентство — у карточек, где это уже было, импорт
+  // честно ничего не менял.
+  height: string | null;
+  weight: string | null;
+  bloodType: string | null;
+  occupation: string[];
+  instruments: string[];
+  soloDebut: string | null;
+  /** Раздел «Trivia» статьи — список фактов на английском, без сносок. */
+  trivia: string[];
 };
 
 export async function fetchTpopMemberPage(
@@ -215,6 +228,26 @@ export async function fetchTpopMemberPage(
 ): Promise<TpopMemberData> {
   const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
   const html = await fetchMediaWikiParsedHtml(fandomApiBase(host), pageTitle, UA);
+  return parseTpopMemberPage(html, pageTitle);
+}
+
+/** «Singer, Actor» / «Guitar<br>Piano» → ["Singer", "Actor"]. */
+function listField(text: string | null): string[] {
+  return (text ?? "")
+    .split(/\s*,\s*|\n+|\s*\/\s*/)
+    .map((v) => v.replace(/\[\d+\]/g, "").trim())
+    .filter((v) => v && !/^n\/?a$/i.test(v));
+}
+
+/** «184 cm (6 ft 0.4 in)» → «184 cm»; «62 kg (136.7 lbs)» → «62 kg». */
+function metricField(text: string | null, unit: "cm" | "kg"): string | null {
+  const m = text?.match(new RegExp(`(\\d{2,3}(?:[.,]\\d)?)\\s*${unit}`, "i"));
+  return m ? `${m[1].replace(",", ".")} ${unit}` : null;
+}
+
+/** Разбор статьи участника — чистая функция (тест —
+ *  tests/unit/fandomWiki.test.ts). */
+export function parseTpopMemberPage(html: string, pageTitle: string): TpopMemberData {
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
 
@@ -228,8 +261,16 @@ export async function fetchTpopMemberPage(
     .split(/\s*,\s*|\n+/)
     .map((n) => stripParenthetical(n.trim()))
     .filter((n): n is string => !!n);
+  // Опора — название статьи (каноничное имя вики). «Nickname» идёт в
+  // дело, только если совпал с ним: у Gorn из PROXIE в «Other name(s)»
+  // стоит «gboy (Mr.) Leo», и без этого ником стал бы «gboy». Но
+  // «Nickname» по умолчанию НЕ главнее — у Marckris там личное «Marc»,
+  // которое больше нигде не используется (см. tpop-band-import.md).
+  const nickname = stripParenthetical(infoboxText($, infobox, "Nickname") ?? "");
+  const titleName = pageTitle.replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase();
   const stageName =
     otherNames.find((n) => n.toLowerCase() === pageTitle.toLowerCase()) ??
+    (nickname && nickname.toLowerCase() === titleName ? nickname : null) ??
     otherNames[0] ??
     pageTitle;
 
@@ -247,5 +288,27 @@ export async function fetchTpopMemberPage(
     agency: parseCurrentAgencyName(infoboxText($, infobox, "Agency")),
     photoUrl: infoboxImage($, infobox),
     socialLinks: infoboxSocialLinks($, infobox),
+    height: metricField(infoboxText($, infobox, "Height"), "cm"),
+    weight: metricField(infoboxText($, infobox, "Weight"), "kg"),
+    bloodType: infoboxText($, infobox, "Blood type")?.trim().match(/^(A|B|AB|O)\b/i)?.[1].toUpperCase() ?? null,
+    occupation: listField(infoboxText($, infobox, "Occupation")),
+    instruments: listField(infoboxText($, infobox, "Instruments")),
+    soloDebut: infoboxText($, infobox, "Solo debut")?.replace(/\[\d+\]/g, "").trim() || null,
+    trivia: triviaList($),
   };
+}
+
+/** Раздел «Trivia»: пункты списка до следующего заголовка h2, без
+ *  сносок «[5]». */
+function triviaList($: CheerioAPI): string[] {
+  const head = $("h2")
+    .filter((_, h) => /^\s*trivia\b/i.test($(h).text()))
+    .first();
+  if (!head.length) return [];
+  const out: string[] = [];
+  head.nextUntil("h2").find("li").add(head.nextUntil("h2").filter("li")).each((_, li) => {
+    const text = $(li).text().replace(/\[\d+\]/g, "").replace(/\s+/g, " ").trim();
+    if (text) out.push(text);
+  });
+  return out;
 }

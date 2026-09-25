@@ -94,7 +94,18 @@ attempt to defeat).
     former matches the name used in the band's own roster and is what
     fans actually call them in a group context; "Nickname" is often a
     separate, more private nickname (e.g. Marckris's "Nickname" is
-    "Marc", used nowhere else on the site).
+    "Marc", used nowhere else on the site). One exception: when no
+    "Other name(s)" entry matches the page title but "Nickname" does,
+    "Nickname" wins — Gorn of PROXIE has "gboy (Mr.) Leo" there and
+    would otherwise become "gboy".
+  - **Profile fields** (2026-09-26, owner: «прогнала PROXIE — по
+    участникам прошлось, но инфу не дозаполнило»): height, weight,
+    blood type, occupation, instruments, solo debut and the article's
+    «Trivia» list (footnote markers stripped) are parsed too and fill
+    blanks only — same rule as the fields above. Before, a member whose
+    name and dates were already known got nothing from a re-import.
+    Parser is a pure `parseTpopMemberPage`, covered by
+    `tests/unit/tpopMember.test.ts`.
   - **Real name**: "Legal name" takes priority over "Birth name" when a
     page has both (hit for real on DICE's Jay, who has a documented
     legal name change) — otherwise falls back to "Birth name".

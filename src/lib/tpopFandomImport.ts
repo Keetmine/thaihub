@@ -1,3 +1,4 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { addMissingPerformerLinks } from "@/lib/socialLinkSync";
 import { fetchTpopBandPage, fetchTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
@@ -138,10 +139,20 @@ async function findOrCreateBandMemberPerformer(
     // convention as the Wikipedia agency importer. The agency is *added*
     // to the performer's set instead (a performer can be signed to more
     // than one studio at once — see PerformerAgency in schema.prisma).
-    const data: { realName?: string; birthDate?: Date; placeOfBirth?: string; photoUrl?: string } = {};
+    const data: Prisma.PerformerUpdateInput = {};
     if (!existing.realName && member.birthName) data.realName = member.birthName;
     if (!existing.birthDate && member.birthDate) data.birthDate = member.birthDate;
     if (!existing.placeOfBirth && member.birthPlace) data.placeOfBirth = member.birthPlace;
+    // Остальное из инфобокса и раздела «Trivia» (правка владельца
+    // 2026-09-26: «по участникам прошлось, но инфу не дозаполнило») —
+    // тоже только в пустое.
+    if (!existing.height && member.height) data.height = member.height;
+    if (!existing.weight && member.weight) data.weight = member.weight;
+    if (!existing.bloodType && member.bloodType) data.bloodType = member.bloodType;
+    if (existing.occupation.length === 0 && member.occupation.length > 0) data.occupation = member.occupation;
+    if (existing.instruments.length === 0 && member.instruments.length > 0) data.instruments = member.instruments;
+    if (!existing.soloDebut && member.soloDebut) data.soloDebut = member.soloDebut;
+    if (existing.trivia.length === 0 && member.trivia.length > 0) data.trivia = member.trivia;
     if (!existing.photoUrl && member.photoUrl) {
       const local = await downloadRemoteImage(member.photoUrl, FOLDER);
       if (local) data.photoUrl = local;
@@ -163,6 +174,13 @@ async function findOrCreateBandMemberPerformer(
       birthDate: member.birthDate,
       placeOfBirth: member.birthPlace,
       photoUrl: await downloadRemoteImage(member.photoUrl, FOLDER),
+      height: member.height,
+      weight: member.weight,
+      bloodType: member.bloodType,
+      occupation: member.occupation,
+      instruments: member.instruments,
+      soloDebut: member.soloDebut,
+      trivia: member.trivia,
       type: "SOLO",
       ...(agencyId ? { agencies: { create: { agencyId } } } : {}),
     },
