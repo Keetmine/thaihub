@@ -184,25 +184,88 @@
 }
 
 /* ---------- Секции админ-форм ---------- */
-.admin-section {
-  border: 1px solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  background: rgba(255, 255, 255, 0.02);
-  padding: 1rem 1.1rem;
+/* Переделка 2026-09-26 (владелец: «каша, всё однообразное, серое на
+   сером, хочется потемнее и акцентов, как на странице статистики»).
+   Слоёв три, и каждый темнее предыдущего по-своему: обёртка формы почти
+   сливается с фоном страницы, секция чуть приподнята и подсвечена своим
+   цветом, поля «утоплены» — темнее секции. У каждой секции свой цвет
+   (--section-rgb): полоска слева, плашка иконки, отсвет в углу и рамка
+   фокуса у полей. */
+.admin-shell .surface:has(.admin-section) {
+  background: #0c0c0f;
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
-.admin-section + .admin-section {
-  margin-top: 0.85rem;
+.admin-section {
+  --section-rgb: 255, 106, 61;
+  /* Фокус полей внутри — цветом секции, а не общим фиолетовым. */
+  --accent-rgb: var(--section-rgb);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--bs-border-radius-lg);
+  background:
+    radial-gradient(34rem 12rem at 0% 0%, rgba(var(--section-rgb), 0.09), transparent 70%),
+    #121215;
+  padding: 1.1rem 1.3rem 1.3rem 1.45rem;
 }
+
+/* Полоска слева — цвет секции, гаснет книзу. */
+.admin-section::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, rgb(var(--section-rgb)), rgba(var(--section-rgb), 0.05));
+}
+
+/* Цвет по порядку — если форма его не задала. */
+.admin-section:not([data-tone]):nth-of-type(6n + 2) { --section-rgb: 45, 212, 191; }
+.admin-section:not([data-tone]):nth-of-type(6n + 3) { --section-rgb: 167, 139, 250; }
+.admin-section:not([data-tone]):nth-of-type(6n + 4) { --section-rgb: 244, 114, 182; }
+.admin-section:not([data-tone]):nth-of-type(6n + 5) { --section-rgb: 96, 165, 250; }
+.admin-section:not([data-tone]):nth-of-type(6n + 6) { --section-rgb: 245, 165, 36; }
+
+.admin-section[data-tone="orange"] { --section-rgb: 255, 106, 61; }
+.admin-section[data-tone="teal"] { --section-rgb: 45, 212, 191; }
+.admin-section[data-tone="violet"] { --section-rgb: 167, 139, 250; }
+.admin-section[data-tone="pink"] { --section-rgb: 244, 114, 182; }
+.admin-section[data-tone="blue"] { --section-rgb: 96, 165, 250; }
+.admin-section[data-tone="gold"] { --section-rgb: 245, 165, 36; }
 
 .admin-section-head {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.85rem;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
   cursor: default;
   list-style: none;
+}
+
+.admin-section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.7rem;
+  color: rgb(var(--section-rgb));
+  background: rgba(var(--section-rgb), 0.14);
+  box-shadow: inset 0 0 0 1px rgba(var(--section-rgb), 0.25);
+}
+
+.admin-section-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.admin-section-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 details.admin-section > summary.admin-section-head {
@@ -227,14 +290,55 @@ details.admin-section[open] > summary.admin-section-head::before {
 
 .admin-section-title {
   font-family: var(--font-display, inherit);
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-weight: 700;
+  font-size: 1.02rem;
+  line-height: 1.2;
   color: #fff;
 }
 
 .admin-section-hint {
+  margin-top: 0.1rem;
   font-size: 0.76rem;
   color: var(--bs-secondary-color);
+}
+
+/* Подписи тише значений: поля перестают сливаться в ровную стену, глаз
+   цепляется за содержимое, а не за одинаковые белые подписи. */
+.admin-section .form-label {
+  margin-bottom: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--bs-secondary-color);
+}
+
+/* Поля «утоплены»: темнее секции, а не светлее — серое больше не
+   наслаивается на серое. */
+.admin-section .form-control,
+.admin-section .form-select {
+  background-color: rgba(0, 0, 0, 0.42);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.admin-section .form-control:hover,
+.admin-section .form-select:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.admin-section .form-control:focus,
+.admin-section .form-select:focus {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Дропзоны внутри секции — тоже утоплены, с пунктиром цвета секции. */
+.admin-section .file-dropzone {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(var(--section-rgb), 0.3);
+}
+
+.admin-section .file-dropzone:hover {
+  border-color: rgba(var(--section-rgb), 0.6);
+  background: rgba(var(--section-rgb), 0.05);
 }
 
 /* Липкая панель сохранения: у длинных форм кнопка уезжала в самый низ. */

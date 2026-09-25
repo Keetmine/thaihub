@@ -10,6 +10,7 @@ import { searchEventOptions } from "../events/actions";
 import { searchSoloPerformerOptions, searchMascotOwnerOptions } from "./actions";
 import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
 import FormSection from "@/components/admin/FormSection";
+import { LinkIcon, RulerIcon, StarIcon, UserIcon, UsersIcon } from "@/components/icons";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
@@ -327,9 +328,9 @@ export default function PerformerForm({
             фото», а профиль был нарезан на четыре секции с рамками —
             «каша и бесполезные группировки»). Тип при создании задан
             разделом, из которого пришли, и не показывается. */}
-        <FormSection title="Основное">
+        <FormSection title="Основное" icon={<UserIcon />} tone="orange">
         <div className="row g-3">
-          <div className="col-12 col-md-7 col-lg-8">
+          <div className="col-12 col-md-8 col-lg-9">
             <div className="row g-2">
               <div className={isCreating ? "col-12" : "col-12 col-lg-8"}>
                 <label className="form-label" htmlFor="performer-form-name">
@@ -496,7 +497,7 @@ export default function PerformerForm({
           {/* Фото крупно и с кадрированием (правка владельца 2026-09-26):
               рамка 3:4, как на странице артиста; «Обрезать» — и у нового
               файла, и у фото, пришедшего импортом. */}
-          <div className="col-12 col-md-5 col-lg-4">
+          <div className="col-12 col-md-4 col-lg-3">
             <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} large recrop />
           </div>
         </div>
@@ -516,7 +517,7 @@ export default function PerformerForm({
             (правка владельца 2026-09-26: «убрать это разделение») — поля
             заполняются импортами и правятся тут же, наравне с прочими. */}
         {type === "SOLO" && (
-          <FormSection title="Профиль" hint="занятия, мерки, автограф — заполняется импортами (tpop.fandom, kprofiles), правится руками">
+          <FormSection title="Профиль" icon={<RulerIcon />} tone="teal" hint="занятия, мерки, автограф — заполняется импортами (tpop.fandom, kprofiles), правится руками">
           <div className="row g-2">
             <div className="col-12 col-md-4">
               <label className="form-label" htmlFor="performer-form-occupation">Занятия</label>
@@ -583,7 +584,7 @@ export default function PerformerForm({
         {/* Одно поле, по факту на строку (правка владельца 2026-09-26:
             пары полей неудобны, когда вставляешь длинный текст). Перевод
             — во вкладке «Перевод», отдельным полем на каждый факт. */}
-        <FormSection title="Факты" hint="по одному на строку; перевод — во вкладке «Перевод»">
+        <FormSection title="Факты" icon={<StarIcon />} tone="gold" hint="по одному на строку; перевод — во вкладке «Перевод»">
           <textarea
             id="performer-form-trivia"
             name="trivia"
@@ -595,7 +596,7 @@ export default function PerformerForm({
           />
         </FormSection>
 
-        <FormSection title="Ссылки и соцсети" hint="MyDramaList, соцсети, музыкальные площадки">
+        <FormSection title="Ссылки и соцсети" icon={<LinkIcon />} tone="blue" hint="MyDramaList, соцсети, музыкальные площадки">
         <div>
           <label className="form-label" htmlFor="performer-form-mydramalistUrl">Ссылка на MyDramaList</label>
           <input id="performer-form-mydramalistUrl"
@@ -865,7 +866,7 @@ export default function PerformerForm({
         </FormSection>
 
         {type === "BAND" && (
-          <FormSection title="Состав группы">
+          <FormSection title="Состав группы" icon={<UsersIcon />} tone="violet">
           <div>
             <label className="form-label d-block" htmlFor="performer-form-memberIds">Участники группы</label>
             <EntityMultiSelect id="performer-form-memberIds"
