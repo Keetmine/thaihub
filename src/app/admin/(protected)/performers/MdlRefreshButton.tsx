@@ -43,6 +43,11 @@ export default function MdlRefreshButton({
   const [askStop, setAskStop] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  /** Когда нажали «Обновить инфу» — по часам браузера: серверное
+   *  startedAt с ними расходится, и счётчик врал на секунды. */
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  /** Когда прогон закончился — счётчик останавливается на итоге. */
+  const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const reloadScheduled = useRef(false);
 
   const running = runId !== null && (run === null || run.status === "RUNNING");
@@ -62,6 +67,9 @@ export default function MdlRefreshButton({
         return;
       }
       setLog(["Импорт запущен"]);
+      setStartedAt(Date.now());
+      setFinishedAt(null);
+      setNow(Date.now());
       setRun(null);
       setAskStop(false);
       setStopping(false);
@@ -78,20 +86,27 @@ export default function MdlRefreshButton({
       const state = await getImportRunState(runId!).catch(() => null);
       if (!alive || !state) return;
       setRun(state);
+      if (state.status !== "RUNNING") setFinishedAt((prev) => prev ?? Date.now());
       if (state.summary) {
         setLog((prev) => (prev[prev.length - 1] === state.summary ? prev : [...prev, state.summary!]));
       }
     }
     void poll();
-    const timer = setInterval(() => {
-      setNow(Date.now());
-      void poll();
-    }, POLL_MS);
+    const timer = setInterval(() => void poll(), POLL_MS);
     return () => {
       alive = false;
       clearInterval(timer);
     };
   }, [runId]);
+
+  // Секундомер — своим таймером раз в секунду, а не вместе с опросом
+  // (тот раз в 1,5 с — счётчик прыгал через секунду). Стоит, когда
+  // прогон кончился.
+  useEffect(() => {
+    if (!startedAt || finishedAt) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [startedAt, finishedAt]);
 
   // Конец прогона: остановили или доделали — перезагружаем страницу.
   // Упавший ждёт, пока человек прочтёт ошибку и закроет окно сам.
@@ -132,7 +147,8 @@ export default function MdlRefreshButton({
     window.location.reload();
   }, [running]);
 
-  const elapsed = run ? Math.max(0, Math.round((now - new Date(run.startedAt).getTime()) / 1000)) : 0;
+  const elapsedSec = startedAt ? Math.max(0, Math.floor(((finishedAt ?? now) - startedAt) / 1000)) : 0;
+  const elapsed = `${Math.floor(elapsedSec / 60)}:${String(elapsedSec % 60).padStart(2, "0")}`;
   const statusLine =
     run?.status === "DONE"
       ? "Готово — обновляем страницу…"
@@ -164,7 +180,7 @@ export default function MdlRefreshButton({
               {running && <span className="mdl-refresh-spinner" aria-hidden />}
               {statusLine}
             </span>
-            <span className="small text-secondary">{elapsed} с</span>
+            <span className="mdl-refresh-time small text-secondary">{elapsed}</span>
           </div>
 
           <ol className="mdl-refresh-log" aria-live="polite">

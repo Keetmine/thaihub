@@ -848,3 +848,11 @@ details.admin-section[open] > summary.admin-section-head::before {
     width: 14rem;
   }
 }
+
+/* Секундомер «м:сс»: без переноса и с цифрами одной ширины — двузначные
+   секунды раньше переносились и дёргали строку. */
+.mdl-refresh-time {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
