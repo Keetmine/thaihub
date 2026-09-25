@@ -2,8 +2,10 @@ import { enqueueFacts } from "@/lib/factsReview";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { addMissingPerformerLinks } from "@/lib/socialLinkSync";
-import { fetchTpopBandPage, fetchTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
-import { fandomPageUrl, DEFAULT_FANDOM_HOST } from "@/lib/fandomWiki";
+import { fetchTpopBandPage, parseTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
+import { parseTpopArtistExtras } from "@/lib/tpopArtistExtras";
+import { fetchMediaWikiParsedHtml } from "@/lib/mediawikiParse";
+import { fandomPageUrl, fandomApiBase, parseFandomTarget, FANDOM_UA, DEFAULT_FANDOM_HOST } from "@/lib/fandomWiki";
 import { addPerformerAgency } from "@/lib/performerAgency";
 import { downloadRemoteImage } from "@/lib/localImage";
 
@@ -78,7 +80,13 @@ async function findOrCreateBandMemberPerformer(
 ): Promise<MemberOutcome> {
   if (!memberLink.href) return { kind: "name-only" };
 
-  const member = await fetchTpopMemberPage(memberLink.href, host);
+  // Страница участника качается ОДИН раз и идёт через оба разбора:
+  // основной (имя, даты, агентство) и расширенный (клипы, награды,
+  // источники — как у импорта со страницы артиста).
+  const target = parseFandomTarget(memberLink.href, host);
+  const memberHtml = await fetchMediaWikiParsedHtml(fandomApiBase(target.host), target.title, FANDOM_UA);
+  const member = parseTpopMemberPage(memberHtml, target.title);
+  const extras = parseTpopArtistExtras(memberHtml, target.host, target.title);
 
   // Кандидаты — по нику И по настоящему имени; решение о привязке
   // принимается ниже, по подтверждающим полям.
@@ -153,6 +161,11 @@ async function findOrCreateBandMemberPerformer(
     if (existing.occupation.length === 0 && member.occupation.length > 0) data.occupation = member.occupation;
     if (existing.instruments.length === 0 && member.instruments.length > 0) data.instruments = member.instruments;
     if (!existing.soloDebut && member.soloDebut) data.soloDebut = member.soloDebut;
+    if (existing.mvAppearances.length === 0 && extras.mvAppearances.length > 0) {
+      data.mvAppearances = extras.mvAppearances;
+    }
+    const noAwards = !Array.isArray(existing.awards) || existing.awards.length === 0;
+    if (noAwards && extras.awards.length > 0) data.awards = extras.awards;
     // Факты — не в карточку, а в очередь на проверку (/admin/facts):
     // напрямую они писались только в пустое и только по-английски, и у
     // артиста с фактами пришедшее терялось.
@@ -203,6 +216,8 @@ async function findOrCreateBandMemberPerformer(
       occupation: member.occupation,
       instruments: member.instruments,
       soloDebut: member.soloDebut,
+      mvAppearances: extras.mvAppearances,
+      ...(extras.awards.length > 0 ? { awards: extras.awards } : {}),
       type: "SOLO",
       ...(agencyId ? { agencies: { create: { agencyId } } } : {}),
     },

@@ -860,3 +860,36 @@ async function mergePairingsForPerformer(
     }
   }
 }
+
+/**
+ * Сколько групп дублей ждёт разбора — для счётчика в меню админки
+ * (просьба владельца 2026-09-26). Скрытые «не сливать» не считаются.
+ *
+ * Подсчёт проходит весь каталог (десять тысяч артистов), а меню
+ * рисуется на каждой странице админки, поэтому число кешируется на
+ * 15 минут в памяти процесса. Слияние и «не сливать» сбрасывают кеш
+ * (`resetDuplicateCountCache`), так что после разбора число верное
+ * сразу, а не через четверть часа.
+ */
+const DUP_COUNT_TTL_MS = 15 * 60 * 1000;
+let dupCountCache: { at: number; count: number } | null = null;
+
+export function resetDuplicateCountCache(): void {
+  dupCountCache = null;
+}
+
+export async function pendingDuplicateCount(): Promise<number> {
+  if (dupCountCache && Date.now() - dupCountCache.at < DUP_COUNT_TTL_MS) return dupCountCache.count;
+  const [dramas, performers, agencies, dismissals] = await Promise.all([
+    findDuplicateDramaGroups(),
+    findDuplicatePerformerGroups(),
+    findDuplicateAgencyGroups(),
+    prisma.duplicateDismissal.findMany({ select: { entityType: true, memberKey: true } }),
+  ]);
+  const hidden = new Set(dismissals.map((d) => `${d.entityType}::${d.memberKey}`));
+  const open = (type: string, groups: { rows: { id: string }[] }[]) =>
+    groups.filter((g) => !hidden.has(`${type}::${groupMemberKey(g.rows)}`)).length;
+  const count = open("drama", dramas) + open("performer", performers) + open("agency", agencies);
+  dupCountCache = { at: Date.now(), count };
+  return count;
+}

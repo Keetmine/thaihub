@@ -1,3 +1,4 @@
+import { pendingDuplicateCount } from "@/lib/duplicates";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { getSetting } from "@/lib/siteSettings";
@@ -188,7 +189,7 @@ export function notifyAdminsAboutCommunity(community: {
 /** Счётчики-бейджи для сайдбара админки: всё, что ждёт разбора. */
 export async function adminBadgeCounts(): Promise<Record<string, number>> {
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [feedback, reports, failedImports, mdlRequests, eventDrafts, mascotDrafts, errors] = await Promise.all([
+  const [feedback, reports, failedImports, mdlRequests, eventDrafts, mascotDrafts, errors, facts, duplicates] = await Promise.all([
     prisma.feedback.count({ where: { status: "NEW" } }),
     prisma.report.count({ where: { status: "NEW" } }),
     // Только неразобранное: у записей есть отметка reviewedAt, иначе
@@ -206,11 +207,18 @@ export async function adminBadgeCounts(): Promise<Record<string, number>> {
     // «Маскоты» там же) — тоже ждут «Одобрить»/«Отклонить» владельца.
     prisma.mascotDraft.count({ where: { status: "PENDING" } }),
     prisma.errorLog.count({ where: { createdAt: { gte: dayAgo }, reviewedAt: null } }),
+    // Факты на проверку (/admin/facts) — и ждущие решения, и ждущие
+    // обработки моделью: второе — сигнал владельцу попросить обработку.
+    prisma.factsReview.count({ where: { status: { in: ["READY", "PENDING"] } } }),
+    // Дубли — через кеш на 15 минут: подсчёт проходит весь каталог.
+    pendingDuplicateCount().catch(() => 0),
   ]);
   return {
     "/admin/feedback": feedback,
     "/admin/moderation": reports,
     "/admin/imports": failedImports + mdlRequests + eventDrafts + mascotDrafts,
     "/admin/errors": errors,
+    "/admin/facts": facts,
+    "/admin/duplicates": duplicates,
   };
 }

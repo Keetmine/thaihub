@@ -1,3 +1,4 @@
+import { enqueueFacts } from "@/lib/factsReview";
 import * as cheerio from "cheerio";
 import { prisma } from "@/lib/prisma";
 import { catalogEventsWhere } from "@/lib/catalogEvents";
@@ -109,12 +110,18 @@ async function applyArtistExtras(ctx: Ctx, performerId: string, page: string): P
       ...(extras.height ? { height: extras.height } : {}),
       ...(extras.weight ? { weight: extras.weight } : {}),
       ...(extras.mvAppearances.length > 0 ? { mvAppearances: extras.mvAppearances } : {}),
-      ...(extras.trivia.length > 0 ? { trivia: extras.trivia } : {}),
       ...(extras.awards.length > 0 ? { awards: extras.awards } : {}),
       ...(extras.references.length > 0 ? { references: extras.references } : {}),
       sourceUrl: extras.sourceUrl,
     },
   });
+  // Факты — не в карточку, а в очередь на проверку (/admin/facts).
+  // Здесь они раньше ПЕРЕЗАПИСЫВАЛИСЬ целиком: у Onglee владелец завела
+  // свои факты, и импорт со страницы вики заменил их чужими (жалоба
+  // 2026-09-26). Остальные поля по-прежнему обновляются со страницы.
+  if (extras.trivia.length > 0) {
+    await enqueueFacts(performerId, "tpop-fandom", extras.trivia, extras.sourceUrl);
+  }
   await importConcerts(ctx, performerId, extras.concerts);
 }
 

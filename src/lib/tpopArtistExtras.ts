@@ -208,6 +208,14 @@ export async function fetchTpopArtistExtras(
 ): Promise<TpopArtistExtras> {
   const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
   const html = await fetchMediaWikiParsedHtml(fandomApiBase(host), pageTitle, UA);
+  return parseTpopArtistExtras(html, host, pageTitle);
+}
+
+/** Разбор без сети — им же пользуется импорт группы, чтобы у участника
+ *  были клипы, награды и источники, как при импорте со страницы
+ *  артиста (жалоба владельца 2026-09-26: «появления в клипах не
+ *  подтягиваются, если импорт идёт через группу»). */
+export function parseTpopArtistExtras(html: string, host: string, pageTitle: string): TpopArtistExtras {
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
 

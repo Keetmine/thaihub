@@ -107,7 +107,10 @@ attempt to defeat).
     the card. Before, a member whose
     name and dates were already known got nothing from a re-import.
     Parser is a pure `parseTpopMemberPage`, covered by
-    `tests/unit/tpopMember.test.ts`.
+    `tests/unit/tpopMember.test.ts`. The member page is fetched once and
+    also run through `parseTpopArtistExtras` (the artist-page parser),
+    so music video appearances and awards fill blanks too — before, they
+    arrived only via the artist-page import (owner, 2026-09-26).
   - **Nickname replaces a full-name card name** (2026-09-26, owner: у
     BUS все участники были заведены полными именами). Only when the
     card's `name` equals its `realName` — i.e. it has no nickname at

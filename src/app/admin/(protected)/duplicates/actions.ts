@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { mergeAgencies, mergeDramas, mergePerformers } from "@/lib/duplicates";
+import { mergeAgencies, mergeDramas, mergePerformers, resetDuplicateCountCache } from "@/lib/duplicates";
 import { requireAdmin } from "@/lib/auth";
 
 /** Что за записи скрывает «не сливать» — те же три типа, что и на
@@ -23,6 +23,8 @@ export async function dismissDuplicateGroupAction(
     create: { entityType, memberKey },
     update: {},
   });
+  // Счётчик в меню — сразу, а не через 15 минут кеша.
+  resetDuplicateCountCache();
   revalidatePath("/admin/duplicates");
 }
 
@@ -32,12 +34,16 @@ export async function restoreDuplicateGroupAction(
 ): Promise<void> {
   await requireAdmin();
   await prisma.duplicateDismissal.deleteMany({ where: { entityType, memberKey } });
+  // Счётчик в меню — сразу, а не через 15 минут кеша.
+  resetDuplicateCountCache();
   revalidatePath("/admin/duplicates");
 }
 
 export async function mergeDramasAction(keeperId: string, loserIds: string[]) {
   await requireAdmin();
   await mergeDramas(keeperId, loserIds);
+  // Счётчик в меню — сразу, а не через 15 минут кеша.
+  resetDuplicateCountCache();
   revalidatePath("/admin/duplicates");
   revalidatePath("/admin/dramas");
   revalidatePath("/dramas");
@@ -47,6 +53,8 @@ export async function mergeDramasAction(keeperId: string, loserIds: string[]) {
 export async function mergePerformersAction(keeperId: string, loserIds: string[]) {
   await requireAdmin();
   await mergePerformers(keeperId, loserIds);
+  // Счётчик в меню — сразу, а не через 15 минут кеша.
+  resetDuplicateCountCache();
   revalidatePath("/admin/duplicates");
   revalidatePath("/admin/performers");
   revalidatePath("/artists");
@@ -58,6 +66,8 @@ export async function mergePerformersAction(keeperId: string, loserIds: string[]
 export async function mergeAgenciesAction(keeperId: string, loserIds: string[]) {
   await requireAdmin();
   await mergeAgencies(keeperId, loserIds);
+  // Счётчик в меню — сразу, а не через 15 минут кеша.
+  resetDuplicateCountCache();
   revalidatePath("/admin/duplicates");
   revalidatePath("/admin/agencies");
   // Списка агентств у нас нет — сбрасываем сами страницы агентств
