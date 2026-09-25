@@ -101,8 +101,10 @@ attempt to defeat).
   - **Profile fields** (2026-09-26, owner: «прогнала PROXIE — по
     участникам прошлось, но инфу не дозаполнило»): height, weight,
     blood type, occupation, instruments, solo debut and the article's
-    «Trivia» list (footnote markers stripped) are parsed too and fill
-    blanks only — same rule as the fields above. Before, a member whose
+    «Trivia» list (footnote markers stripped) are parsed too; the
+    profile fields fill blanks only, the facts go to the review queue
+    (/admin/facts, see [facts-review.md](facts-review.md)) instead of
+    the card. Before, a member whose
     name and dates were already known got nothing from a re-import.
     Parser is a pure `parseTpopMemberPage`, covered by
     `tests/unit/tpopMember.test.ts`.

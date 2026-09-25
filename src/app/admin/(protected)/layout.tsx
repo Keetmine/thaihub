@@ -147,6 +147,9 @@ const NAV_SECTIONS: {
       { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
       { href: "/admin/finance", title: "Финансы", icon: StarIcon },
       { href: "/admin/translations", title: "Словарь каталога", icon: BookIcon },
+      // Очередь фактов с внешних источников — только админ (правка
+      // владельца 2026-09-26: «разреши только мне править»).
+      { href: "/admin/facts", title: "Факты на проверку", icon: ChatIcon, matchPrefixes: ["/admin/facts/"] },
       { href: "/admin/settings", title: "Настройки", icon: SettingsIcon },
     ],
   },

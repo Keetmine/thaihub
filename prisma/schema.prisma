@@ -238,6 +238,7 @@ model Performer {
   // (решение владельца там же). Не уникально: участники группы делят
   // одну страницу.
   kprofilesUrl  String?
+  factsReviews  FactsReview[]
   // «Music video appearances» — просто текстом, без ссылок.
   mvAppearances String[] @default([])
   trivia        String[] @default([])
@@ -2873,4 +2874,41 @@ model ContentTranslation {
   updatedAt DateTime @updatedAt
 
   @@unique([kind, source])
+}
+
+/// Факты артиста на проверку (просьба владельца 2026-09-26: «когда
+/// парсятся дополнительные факты — открыть на странице, чьи они: поле
+/// оригинал, что после, и перевод, три колонки, как на гитхабе с +»).
+///
+/// Импортёры (фандом, kprofiles) больше не пишут факты в карточку сами:
+/// кладут сюда то, что пришло (`incoming`). Обработка — модель сливает
+/// пришедшее с нашими фактами, пересказывает и переводит только новое —
+/// пишет `proposedEn` / `proposedRu`. Владелец смотрит сравнение в
+/// /admin/facts и применяет или отклоняет. Применение сохраняет прежние
+/// списки в TextRewrite (entity «performer», field «trivia»), откат
+/// работает как у остальных текстов.
+model FactsReview {
+  id          String   @id @default(cuid())
+  performerId String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  /// Откуда пришло: «tpop-fandom», «kprofiles»…
+  source      String
+  sourceUrl   String?
+  /// Факты как на источнике — английский, без обработки.
+  incoming    String[]
+  /// PENDING — ждёт обработки моделью; READY — предложение готово, ждёт
+  /// владельца; APPLIED — применено; REJECTED — отклонено.
+  status      String   @default("PENDING")
+  /// Снимок наших фактов на момент обработки — «оригинал» в сравнении.
+  baseEn      String[] @default([])
+  baseRu      String[] @default([])
+  proposedEn  String[] @default([])
+  proposedRu  String[] @default([])
+  model       String?
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+  reviewedAt  DateTime?
+
+  @@index([status, createdAt])
+  @@index([performerId])
 }

@@ -1,8 +1,9 @@
+import { enqueueFacts } from "@/lib/factsReview";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { addMissingPerformerLinks } from "@/lib/socialLinkSync";
 import { fetchTpopBandPage, fetchTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
-import { DEFAULT_FANDOM_HOST } from "@/lib/fandomWiki";
+import { fandomPageUrl, DEFAULT_FANDOM_HOST } from "@/lib/fandomWiki";
 import { addPerformerAgency } from "@/lib/performerAgency";
 import { downloadRemoteImage } from "@/lib/localImage";
 
@@ -152,7 +153,12 @@ async function findOrCreateBandMemberPerformer(
     if (existing.occupation.length === 0 && member.occupation.length > 0) data.occupation = member.occupation;
     if (existing.instruments.length === 0 && member.instruments.length > 0) data.instruments = member.instruments;
     if (!existing.soloDebut && member.soloDebut) data.soloDebut = member.soloDebut;
-    if (existing.trivia.length === 0 && member.trivia.length > 0) data.trivia = member.trivia;
+    // Факты — не в карточку, а в очередь на проверку (/admin/facts):
+    // напрямую они писались только в пустое и только по-английски, и у
+    // артиста с фактами пришедшее терялось.
+    if (member.trivia.length > 0) {
+      await enqueueFacts(existing.id, "tpop-fandom", member.trivia, fandomPageUrl(host, memberLink.href));
+    }
     // Ник вместо полного имени (правка владельца 2026-09-26: у BUS все
     // участники заведены полными именами, а на вики — по никам). Имя
     // меняем, ТОЛЬКО когда оно совпадает с настоящим: значит, ника у
@@ -197,12 +203,14 @@ async function findOrCreateBandMemberPerformer(
       occupation: member.occupation,
       instruments: member.instruments,
       soloDebut: member.soloDebut,
-      trivia: member.trivia,
       type: "SOLO",
       ...(agencyId ? { agencies: { create: { agencyId } } } : {}),
     },
   });
   await addMissingPerformerLinks(created.id, member.socialLinks);
+  if (member.trivia.length > 0) {
+    await enqueueFacts(created.id, "tpop-fandom", member.trivia, fandomPageUrl(host, memberLink.href));
+  }
   return { kind: "created", performerId: created.id };
 }
 
