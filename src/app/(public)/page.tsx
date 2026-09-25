@@ -538,8 +538,15 @@ export default async function HomePage({
     airingToday.length > 0 ? "airing" : null,
     watchingNow.length > 0 ? "watching" : null,
     communityCount > 0 ? "communities" : null,
-    friendIds.length > 0 ? "friends" : null,
   ].filter((k): k is string => !!k);
+
+  // «У друзей» — не в парах, а в нижнем ряду рядом с «Новой музыкой»,
+  // той же ширины (правка владельца 2026-09-26: «сделать такого же
+  // размера, как Новая музыка»). Тогда нижние плитки идут по 6: друзья
+  // + музыка, места + «В этот день». Без друзей нижний ряд прежний,
+  // 3 / 6 / 3.
+  const hasFriends = friendIds.length > 0;
+  const sideSpan = hasFriends ? "6" : "3";
 
   const spanOf = new Map<string, string>();
   tileOrder.forEach((key, index) => {
@@ -892,11 +899,12 @@ export default async function HomePage({
           </div>
         )}
 
+
         {/* «У друзей» — три последние записи активности друзей
             (минимальная версия Г3, см. HomeFriendsFeed). Гейт — уже
             посчитанные friendIds: без друзей ни блока, ни запросов. */}
-        {friendIds.length > 0 && (
-          <div className="bento-tile" data-span={span("friends")}>
+        {hasFriends && (
+          <div className="bento-tile" data-span="6">
             <HomeFriendsFeed friendIds={friendIds} viewerPremium={premium} />
           </div>
         )}
@@ -911,45 +919,9 @@ export default async function HomePage({
             Столбец из двух плиток рядом с одной высокой не годился:
             стопка оказывалась заметно выше соседки.
             Места живут отдельно от музыки: на витрине /music, куда
-            ведёт «все →», одна музыка. */}
-        {locationNews.length > 0 && (
-          <div className="bento-tile" data-span="3">
-            {/* Заголовок и подпись говорят, что места СВЕЖИЕ, а не
-                просто раздел каталога (правка владельца 2026-09-10:
-                «показать, что недавно добавлены или обновлены»). */}
-            <h2 className="section-heading mb-3">
-              📍 {dict.home.newsLocations}
-            </h2>
-            <div className="row g-3 stagger">
-              {locationNews.map((item) => (
-                <div key={`loc-${item.dramaId}`} className="col-12">
-                  <Link
-                    href={dramaHref(item)}
-                    className="d-flex align-items-center gap-3 text-decoration-none"
-                  >
-                    <LetterAvatar
-                      name={dramaTitleForLocale(item, locale)}
-                      photoUrl={item.posterUrl}
-                      size={2.6}
-                      rounded={false}
-                    />
-                    <div style={{ minWidth: 0 }} className="flex-grow-1">
-                      <span className="text-white d-block text-truncate">
-                        {dramaTitleForLocale(item, locale)}
-                      </span>
-                      {/* Только «+N мест»: что это новое, говорит сам
-                          заголовок плитки, а дата рядом с ним только
-                          дробила строку (правка владельца 2026-09-10). */}
-                      <span className="small text-secondary">
-                        {dict.home.newsLocationsCount(item.count)}
-                      </span>
-                    </div>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+            ведёт «все →», одна музыка.
+            С друзьями ряд перестраивается в два по 6: «У друзей» +
+            музыка, затем места + «В этот день» (см. sideSpan выше). */}
 
         {/* Новая музыка. Внутри — ПЛОСКИЕ строки, без карточек-рамок
             внутри плитки (правка владельца 2026-09-10: «блоки хоть и
@@ -1019,8 +991,47 @@ export default async function HomePage({
           )}
         </section>
 
+        {locationNews.length > 0 && (
+          <div className="bento-tile" data-span={sideSpan}>
+            {/* Заголовок и подпись говорят, что места СВЕЖИЕ, а не
+                просто раздел каталога (правка владельца 2026-09-10:
+                «показать, что недавно добавлены или обновлены»). */}
+            <h2 className="section-heading mb-3">
+              📍 {dict.home.newsLocations}
+            </h2>
+            <div className="row g-3 stagger">
+              {locationNews.map((item) => (
+                <div key={`loc-${item.dramaId}`} className="col-12">
+                  <Link
+                    href={dramaHref(item)}
+                    className="d-flex align-items-center gap-3 text-decoration-none"
+                  >
+                    <LetterAvatar
+                      name={dramaTitleForLocale(item, locale)}
+                      photoUrl={item.posterUrl}
+                      size={2.6}
+                      rounded={false}
+                    />
+                    <div style={{ minWidth: 0 }} className="flex-grow-1">
+                      <span className="text-white d-block text-truncate">
+                        {dramaTitleForLocale(item, locale)}
+                      </span>
+                      {/* Только «+N мест»: что это новое, говорит сам
+                          заголовок плитки, а дата рядом с ним только
+                          дробила строку (правка владельца 2026-09-10). */}
+                      <span className="small text-secondary">
+                        {dict.home.newsLocationsCount(item.count)}
+                      </span>
+                    </div>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {onThisDayCard && (
-          <div className="bento-tile" data-span="3">
+          <div className="bento-tile" data-span={sideSpan}>
             {onThisDayCard}
           </div>
         )}
