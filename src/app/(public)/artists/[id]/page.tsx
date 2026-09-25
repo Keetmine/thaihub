@@ -39,7 +39,6 @@ import {
   BuildingIcon,
   PinIcon,
   MusicNoteIcon,
-  UserIcon,
   TagIcon,
   CalendarIcon,
   RulerIcon,
@@ -560,7 +559,6 @@ export default async function PerformerPage({
       !!(
         performer.birthDate ||
         performer.nationality ||
-        performer.alsoKnownAs ||
         performer.musicAlias ||
         placeOfBirth
       )) ||
@@ -702,6 +700,12 @@ export default async function PerformerPage({
               </>
             )}
           </h1>
+          {/* Другие имена — под заголовком строкой, как альтернативные
+              названия у сериала (правка владельца 2026-09-26): это часть
+              имени, а не сведение в ряду с ростом и агентством. */}
+          {performer.alsoKnownAs && (
+            <p className="small text-secondary mb-0">{performer.alsoKnownAs}</p>
+          )}
           {/* Без фото плашке некуда встать в колонке — тогда она живёт
               под именем. */}
           {!displayPhoto && birthdayBadge}
@@ -816,13 +820,6 @@ export default async function PerformerPage({
               <PinIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.catalog.artist.nationality}</span>{" "}
               {contentDict.performerCountry(performer.nationality)}
-            </p>
-          )}
-          {!isBand && performer.alsoKnownAs && (
-            <p className="small text-secondary mb-0">
-              <UserIcon className="icon-inline" />{" "}
-              <span className="text-secondary">{t.catalog.artist.alsoKnownAs}</span>{" "}
-              {performer.alsoKnownAs}
             </p>
           )}
           {!isBand && performer.musicAlias && (
