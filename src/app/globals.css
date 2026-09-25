@@ -3802,6 +3802,27 @@ button.kpi-tile-toggle.is-open .kpi-tile-chevron svg {
   white-space: nowrap;
 }
 
+/* Крупная карточка человека (selectedVariant="person"): участники группы
+   и владельцы маскота — лицо должно быть видно (правка владельца
+   2026-09-26: «крупнее выводить актёров, а то плохо видно»). */
+.selected-card.selected-card-person {
+  gap: 0.75rem;
+  max-width: 18rem;
+  padding: 0.45rem 0.75rem 0.45rem 0.45rem;
+}
+
+.selected-card-person .performer-select-avatar {
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 0.6rem;
+  object-fit: cover;
+}
+
+.selected-card-person .selected-card-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 /* ---------- Быстрый поиск по админке (Cmd/Ctrl+K) ---------- */
 .quick-search-backdrop {
   position: fixed;
@@ -9974,4 +9995,8 @@ a.profile-friend-more:hover {
   border-radius: var(--bs-border-radius-sm);
   background: var(--bs-tertiary-bg);
   height: 100%;
+}
+
+.selected-card-person .performer-select-avatar-placeholder {
+  font-size: 1.2rem;
 }

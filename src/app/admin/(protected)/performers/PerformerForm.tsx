@@ -11,7 +11,7 @@ import { searchSoloPerformerOptions, searchMascotOwnerOptions } from "./actions"
 import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
 import FormSection from "@/components/admin/FormSection";
 import MdlRefreshButton from "./MdlRefreshButton";
-import { BookIcon, EyeIcon, LinkIcon, MusicNoteIcon, UserIcon, UsersIcon } from "@/components/icons";
+import { BookIcon, EyeIcon, LinkIcon, MusicNoteIcon, UserIcon } from "@/components/icons";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
@@ -437,6 +437,30 @@ export default function PerformerForm({
                 </>
               )}
 
+              {/* Состав группы — в «Основном», сразу под названием: для
+                  группы это главное после имени (правка владельца
+                  2026-09-26), и так рядом с фото нет пустоты. */}
+              {type === "BAND" && (
+                <div className="col-12">
+                  <label className="form-label d-block" htmlFor="performer-form-memberIds">Участники группы</label>
+                  <EntityMultiSelect id="performer-form-memberIds"
+                    name="memberIds"
+                    options={soloPerformers}
+                    defaultSelectedIds={defaultMemberIds}
+                    placeholder="Начните вводить имя участника…"
+                    createLabel="Создать исполнителя"
+                    emptyMessage="Нет соло-исполнителей, которых можно добавить как участников."
+                    hrefKind="Performer"
+                    selectedVariant="person"
+                    searchOptions={searchSoloPerformerOptions}
+                    onCreateNew={async (query) => {
+                      const created = await createPerformerAndReturn(query);
+                      return { id: created.id, name: created.name, photoUrl: null };
+                    }}
+                  />
+                </div>
+              )}
+
               {type === "MASCOT" && (
                 <div className="col-12 col-sm-6">
                   <label className="form-label" htmlFor="performer-form-birthDate">День рождения маскота</label>
@@ -452,6 +476,7 @@ export default function PerformerForm({
                     defaultSelectedIds={defaultMascotPerformerIds}
                     placeholder="Начните вводить имя актёра…"
                     hrefKind="Performer"
+                    selectedVariant="person"
                     searchOptions={searchMascotOwnerOptions}
                   />
                 </div>
@@ -465,6 +490,7 @@ export default function PerformerForm({
           </div>
         </div>
         </FormSection>
+
 
         {/* Внешность и характер — только у актёра: мерки, группа крови,
             MBTI и автограф справа. */}
@@ -869,27 +895,6 @@ export default function PerformerForm({
         </div>
         </FormSection>
 
-        {type === "BAND" && (
-          <FormSection title="Состав группы" icon={<UsersIcon />} tone="red">
-          <div>
-            <label className="form-label d-block" htmlFor="performer-form-memberIds">Участники группы</label>
-            <EntityMultiSelect id="performer-form-memberIds"
-              name="memberIds"
-              options={soloPerformers}
-              defaultSelectedIds={defaultMemberIds}
-              placeholder="Начните вводить имя участника…"
-              createLabel="Создать исполнителя"
-              emptyMessage="Нет соло-исполнителей, которых можно добавить как участников."
-              hrefKind="Performer"
-              searchOptions={searchSoloPerformerOptions}
-              onCreateNew={async (query) => {
-                const created = await createPerformerAndReturn(query);
-                return { id: created.id, name: created.name, photoUrl: null };
-              }}
-            />
-          </div>
-          </FormSection>
-        )}
       </div>
       </div>
 

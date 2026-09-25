@@ -101,8 +101,11 @@ export default function EntityMultiSelect({
    *  instead of client-side filtering. */
   searchOptions?: (query: string) => Promise<EntityOption[]>;
   /** «card» — выбранные показываются карточками с постером/фото (списки
-   *  сериалов и событий: по чипам без картинок непонятно, что выбрано). */
-  selectedVariant?: "chip" | "card";
+   *  сериалов и событий: по чипам без картинок непонятно, что выбрано).
+   *  «person» — та же карточка, но крупнее: люди (участники группы,
+   *  владельцы маскота), чьи лица в мелкой карточке не разглядеть
+   *  (правка владельца 2026-09-26). */
+  selectedVariant?: "chip" | "card" | "person";
   /** Режим «только выбор»: компонент ничего не хранит и не рендерит ни
    *  чипов, ни hidden-инпутов — каждый выбранный (в том числе созданный
    *  через модалку) вариант отдаётся наверх, а состояние живёт у
@@ -258,10 +261,10 @@ export default function EntityMultiSelect({
 
   return (
     <div>
-      {selected.length > 0 && selectedVariant === "card" && (
+      {selected.length > 0 && (selectedVariant === "card" || selectedVariant === "person") && (
         <div className="d-flex flex-wrap gap-2 mb-2">
           {selected.map((o) => (
-            <div key={o.id} className="selected-card">
+            <div key={o.id} className={`selected-card ${selectedVariant === "person" ? "selected-card-person" : ""}`}>
               <input type="hidden" name={name} value={o.id} />
               <Avatar option={o} />
               <span className="selected-card-name">{o.name}</span>

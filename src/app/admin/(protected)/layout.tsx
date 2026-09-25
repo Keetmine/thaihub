@@ -68,6 +68,8 @@ const NAV_SECTIONS: {
         icon: UsersIcon,
         matchPrefixes: ["/admin/performers/"],
         // ?view=bands|mascots — свои пункты ниже, актёров не подсвечиваем.
+        // Страницы правки и создания группы/маскота несут тот же view
+        // (их страницы сами дописывают его в адрес).
         matchQuery: { view: null },
       },
       {
@@ -75,6 +77,7 @@ const NAV_SECTIONS: {
         managerOk: true,
         title: "Группы",
         icon: MusicNoteIcon,
+        matchPrefixes: ["/admin/performers/"],
         matchQuery: { view: "bands" },
       },
       {
@@ -82,6 +85,7 @@ const NAV_SECTIONS: {
         managerOk: true,
         title: "Маскоты",
         icon: StarIcon,
+        matchPrefixes: ["/admin/performers/"],
         matchQuery: { view: "mascots" },
       },
       {

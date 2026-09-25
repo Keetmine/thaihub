@@ -385,7 +385,7 @@ export async function createPerformer(formData: FormData) {
   revalidatePath("/admin/pairings");
   revalidatePath("/artists");
   revalidatePath("/");
-  redirect(`/admin/performers/${performer.id}/edit`);
+  redirect(`/admin/performers/${performer.id}/edit${type === "BAND" ? "?view=bands" : type === "MASCOT" ? "?view=mascots" : ""}`);
 }
 
 /**
@@ -584,7 +584,11 @@ export async function updatePerformer(id: string, formData: FormData) {
   // он сбросил бы скролл и активную вкладку. Профиль тоже больше не
   // уводит в список (просьба владельца: правка не закрывает страницу)
   // — назад на свою же форму с отметкой «Сохранено».
-  if (saveGeneral) redirect(`/admin/performers/${id}/edit?saved=1`);
+  // ?view — раздел по типу: меню подсвечивает «Группы»/«Маскоты».
+  if (saveGeneral) {
+    const view = effectiveType === "BAND" ? "&view=bands" : effectiveType === "MASCOT" ? "&view=mascots" : "";
+    redirect(`/admin/performers/${id}/edit?saved=1${view}`);
+  }
 }
 
 

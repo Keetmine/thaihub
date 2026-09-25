@@ -60,7 +60,11 @@ function emptyRelationFilterWhere(
 
 function AdminPerformerRow({
   performer,
+  view,
 }: {
+  /** ?view раздела — в ссылку правки, чтобы меню подсвечивало тот же
+   *  раздел без лишнего перенаправления. */
+  view: string | null;
   performer: {
     id: string;
     name: string;
@@ -70,10 +74,11 @@ function AdminPerformerRow({
   };
 }) {
   const boundDelete = deletePerformer.bind(null, performer.id);
+  const editHref = `/admin/performers/${performer.id}/edit${view ? `?view=${view}` : ""}`;
   return (
     <div className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3">
       <Link
-        href={`/admin/performers/${performer.id}/edit`}
+        href={editHref}
         className="stretched-link text-decoration-none d-flex align-items-center gap-3"
         style={{ minWidth: 0 }}
       >
@@ -102,7 +107,7 @@ function AdminPerformerRow({
           individually clickable instead of triggering the row navigation. */}
       <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
         <Link
-          href={`/admin/performers/${performer.id}/edit`}
+          href={editHref}
           className="icon-btn"
           aria-label="Редактировать"
           data-tooltip="Редактировать"
@@ -248,7 +253,7 @@ export default async function AdminPerformersPage({
         {/* Тип новой записи — из раздела: селекта типа в форме создания
             больше нет (правка владельца 2026-09-26). */}
         <Link
-          href={`/admin/performers/new${isMascots ? "?type=MASCOT" : isBands ? "?type=BAND" : ""}`}
+          href={`/admin/performers/new${isMascots ? "?type=MASCOT&view=mascots" : isBands ? "?type=BAND&view=bands" : ""}`}
           className="btn btn-primary btn-sm"
         >
           {isMascots ? "+ Добавить маскота" : isBands ? "+ Добавить группу" : "+ Добавить исполнителя"}
@@ -310,7 +315,7 @@ export default async function AdminPerformersPage({
               <BulkList
                 rows={performers.map((p) => ({
                   id: p.id,
-                  node: <AdminPerformerRow performer={p} />,
+                  node: <AdminPerformerRow performer={p} view={isMascots ? "mascots" : isBands ? "bands" : null} />,
                 }))}
                 actions={[
                   {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { pairingLabel } from "@/lib/pairingLabel";
 import SavedBanner from "@/components/admin/SavedBanner";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { performerOptionLabel } from "@/lib/searchWhere";
 import { performerHref } from "@/lib/performerSlug";
@@ -15,15 +15,18 @@ import TranslationEditor from "@/components/admin/TranslationEditor";
 
 export const dynamic = "force-dynamic";
 
+/** Раздел списка по типу записи — тот же ?view, что у пунктов меню. */
+const TYPE_VIEW: Record<string, string> = { BAND: "bands", MASCOT: "mascots" };
+
 export default async function EditPerformerPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; view?: string }>;
 }) {
   const { id } = await params;
-  const { saved } = await searchParams;
+  const { saved, view } = await searchParams;
 
   // Тяжёлые каталоги в комбобоксы не грузятся (searchOptions ищет на
   // сервере) — передаются только уже связанные записи, чтобы селекты
@@ -64,6 +67,20 @@ export default async function EditPerformerPage({
 
   if (!performer) notFound();
 
+  // Раздел админки — по типу записи: в адресе правки группы стоит
+  // ?view=bands, маскота — ?view=mascots. По нему меню подсвечивает
+  // «Группы»/«Маскоты», а не «Актёров» (правка владельца 2026-09-26).
+  // Сюда приходят и без него (поиск, история, редирект после
+  // сохранения) — дописываем, остальные параметры сохраняем.
+  const expectedView = TYPE_VIEW[performer.type] ?? null;
+  if ((view ?? null) !== expectedView) {
+    const qs = new URLSearchParams();
+    if (saved) qs.set("saved", saved);
+    if (expectedView) qs.set("view", expectedView);
+    const tail = qs.toString();
+    redirect(`/admin/performers/${id}/edit${tail ? `?${tail}` : ""}`);
+  }
+
   // В строке пейринга показываем ОБОИХ участников карточками (фото +
   // имя), в том самом порядке, что записан в пейринге — «A × B» (правка
   // владельца 2026-09-11). Раньше стоял только партнёр, но рядом живёт
@@ -90,12 +107,15 @@ export default async function EditPerformerPage({
 
   return (
     <div>
-      <Link href="/admin/performers" className="eyebrow text-decoration-none">
-        ← К списку исполнителей
+      <Link
+        href={expectedView ? `/admin/performers?view=${expectedView}` : "/admin/performers"}
+        className="eyebrow text-decoration-none"
+      >
+        {performer.type === "BAND" ? "← К списку групп" : performer.type === "MASCOT" ? "← К списку маскотов" : "← К списку исполнителей"}
       </Link>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
-          Редактировать исполнителя
+          {performer.type === "BAND" ? "Редактировать группу" : performer.type === "MASCOT" ? "Редактировать маскота" : "Редактировать исполнителя"}
         </h1>
         <a
           href={performerHref(performer)}
@@ -241,10 +261,10 @@ export default async function EditPerformerPage({
               карточки — кнопкой у ссылки на MyDramaList в форме. */}
           <ConfirmForm
             action={boundDelete}
-            confirmMessage={`Удалить исполнителя «${performer.name}»?`}
+            confirmMessage={`Удалить ${performer.type === "BAND" ? "группу" : performer.type === "MASCOT" ? "маскота" : "исполнителя"} «${performer.name}»?`}
           >
             <button type="button" className="btn btn-outline-danger btn-sm">
-              Удалить исполнителя
+              {performer.type === "BAND" ? "Удалить группу" : performer.type === "MASCOT" ? "Удалить маскота" : "Удалить исполнителя"}
             </button>
           </ConfirmForm>
         </div>

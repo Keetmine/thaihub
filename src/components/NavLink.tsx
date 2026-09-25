@@ -35,9 +35,12 @@ export default function NavLink({
     : Object.entries(matchQuery).every(([k, v]) =>
         v === null ? !searchParams.has(k) : searchParams.get(k) === v,
       );
+  // Условие по query действует и на вложенные страницы: правка группы
+  // (/admin/performers/<id>/edit?view=bands) не должна подсвечивать
+  // «Актёров» только потому, что адрес начинается так же (правка
+  // владельца 2026-09-26).
   const isActive =
-    (pathname === hrefPath && queryOk) ||
-    (matchPrefixes ?? []).some((p) => pathname.startsWith(p));
+    queryOk && (pathname === hrefPath || (matchPrefixes ?? []).some((p) => pathname.startsWith(p)));
 
   return (
     // These routes are all force-dynamic (hit Postgres on every render), so
