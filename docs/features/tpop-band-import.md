@@ -106,6 +106,14 @@ attempt to defeat).
     name and dates were already known got nothing from a re-import.
     Parser is a pure `parseTpopMemberPage`, covered by
     `tests/unit/tpopMember.test.ts`.
+  - **Nickname replaces a full-name card name** (2026-09-26, owner: у
+    BUS все участники были заведены полными именами). Only when the
+    card's `name` equals its `realName` — i.e. it has no nickname at
+    all — and the wiki's stage name is shorter: «Ashirakorn
+    Suvitayasatian» → «Aa». A card that already has a nickname
+    («Copper») or a hand-edited name is left alone; the full name stays
+    in `realName`. The slug is not regenerated, so old links keep
+    working.
   - **Real name**: "Legal name" takes priority over "Birth name" when a
     page has both (hit for real on DICE's Jay, who has a documented
     legal name change) — otherwise falls back to "Birth name".

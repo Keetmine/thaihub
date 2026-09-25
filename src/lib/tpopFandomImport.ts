@@ -153,6 +153,23 @@ async function findOrCreateBandMemberPerformer(
     if (existing.instruments.length === 0 && member.instruments.length > 0) data.instruments = member.instruments;
     if (!existing.soloDebut && member.soloDebut) data.soloDebut = member.soloDebut;
     if (existing.trivia.length === 0 && member.trivia.length > 0) data.trivia = member.trivia;
+    // Ник вместо полного имени (правка владельца 2026-09-26: у BUS все
+    // участники заведены полными именами, а на вики — по никам). Имя
+    // меняем, ТОЛЬКО когда оно совпадает с настоящим: значит, ника у
+    // карточки нет вовсе и полное имя стоит за него. Если ник уже
+    // есть («Copper») или имя правили руками — не трогаем. Полное имя
+    // никуда не девается: оно в realName и видно рядом с ником.
+    const nameIsRealName =
+      !!existing.realName && loose(existing.name) === loose(existing.realName);
+    if (
+      nameIsRealName &&
+      member.stageName &&
+      loose(member.stageName) !== loose(existing.name) &&
+      // Ник не должен быть тем же полным именем в другом написании.
+      member.stageName.split(/\s+/).length < existing.name.split(/\s+/).length
+    ) {
+      data.name = member.stageName;
+    }
     if (!existing.photoUrl && member.photoUrl) {
       const local = await downloadRemoteImage(member.photoUrl, FOLDER);
       if (local) data.photoUrl = local;
