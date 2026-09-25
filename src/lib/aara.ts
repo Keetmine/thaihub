@@ -160,6 +160,31 @@ export function splitAaraTitle(title: string): { variant: string | null; base: s
   return m ? { variant: m[1].trim(), base: m[2].trim() } : { variant: null, base: title.trim() };
 }
 
+/**
+ * Строка «出演» → список имён.
+ *
+ * Это СПИСОК, а не проза: «UP / POOM», «GEN1 (ZEE/MAX/MARK/POPPY)»,
+ * «BOSS×NOEUL». Поиск знакомых имён внутри строки, как в свободном
+ * тексте, на коротких никах не срабатывает («BUILD», «NET», «ZEE» —
+ * такие слова осторожный матчер по прозе не берёт, и правильно
+ * делает). Поэтому строку режем по разделителям и сверяем каждый
+ * кусок с каталогом точно.
+ *
+ * По пробелам НЕ режем: «Sam Lin» — одно имя. Списки через пробел
+ * («BOSS NOEUL FORT PEAT SUNNY …») достаются вторым способом — поиском
+ * по прозе, он как раз для них.
+ */
+export function splitAaraLineup(text: string | null): string[] {
+  if (!text) return [];
+  return normalizeWidth(text)
+    .replace(/【[^】]*】/g, " ")
+    // ・ разделяет и японские имена («リン・ズーホン»), но такие имена в
+    // нашем каталоге всё равно не ищутся — разрезать их не вредно.
+    .split(/[/／、，,&＋+×・()]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 2 && !/^\d+$/.test(s));
+}
+
 /** Один сеанс: день плюс время начала, если оно на странице есть. */
 export type AaraSlot = { date: string; time: string | null };
 
@@ -214,6 +239,9 @@ export type AaraEvent = {
   dates: string[];
   /** Время начала каждого сеанса дня; пусто — на странице его нет. */
   times: string[];
+  /** Строка «日時» как есть — в черновик, чтобы владелец видел исходник
+   *  рядом с тем, что из него вышло. */
+  whenText: string | null;
   venue: string | null;
   /** Город из хвоста «豊洲PIT (東京)», если он там есть. */
   city: string | null;
@@ -296,6 +324,7 @@ export function parseAaraEvent(html: string, sourceUrl: string): AaraEvent {
     variant,
     dates,
     times,
+    whenText: when || null,
     slots,
     reviewNotes,
     venue: cityMatch ? cityMatch[1].trim() : venueRaw,
