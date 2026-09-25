@@ -1,4 +1,6 @@
 import SubmitButton from "@/components/admin/SubmitButton";
+import FormSection from "@/components/admin/FormSection";
+import { GlobeIcon } from "@/components/icons";
 import { saveEntityTranslations } from "@/app/admin/(protected)/translations/entityActions";
 import {
   TRANSLATABLE_FIELDS,
@@ -47,20 +49,18 @@ export default function TranslationEditor({
     Array.isArray(value) ? value.join("\n") : (value ?? "");
 
   return (
-    <form action={saveEntityTranslations} className="surface p-4">
+    // Та же секция, что у форм каталога (правка владельца 2026-09-26:
+    // «перевод остался со старыми стилями»): цветная полоска, иконка,
+    // утопленные поля.
+    <form action={saveEntityTranslations}>
       <input type="hidden" name="entity" value={entity} />
       <input type="hidden" name="id" value={id} />
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-        <h2 className="section-heading mb-0">Перевод на русский</h2>
-        <span className="small text-secondary">
-          переведено: {fields.filter((f) => asText(ru[f.name]).trim()).length} из {fields.length}
-        </span>
-      </div>
-      <p className="small text-secondary mb-3">
-        Слева — как записано в каталоге, справа — что увидит русская
-        версия сайта. Пустое поле означает «не переводили»: на витрине
-        останется оригинал. Списки — по строке на пункт.
-      </p>
+      <FormSection
+        title="Перевод на русский"
+        icon={<GlobeIcon />}
+        tone="indigo"
+        hint={`переведено ${fields.filter((f) => asText(ru[f.name]).trim()).length} из ${fields.length} · слева оригинал, справа русская версия; пустое поле — на витрине останется оригинал`}
+      >
 
       <div className="d-flex flex-column gap-3">
         {fields.map((field) => {
@@ -162,9 +162,10 @@ export default function TranslationEditor({
         })}
       </div>
 
-      <div className="mt-3">
+      <div>
         <SubmitButton label="Сохранить перевод" busyLabel="Сохраняем…" className="btn btn-primary btn-sm" />
       </div>
+      </FormSection>
     </form>
   );
 }

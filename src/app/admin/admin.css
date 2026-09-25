@@ -197,7 +197,7 @@
 }
 
 .admin-section {
-  --section-rgb: 255, 106, 61;
+  --section-rgb: 139, 92, 246;
   /* Фокус полей внутри — цветом секции, а не общим фиолетовым. */
   --accent-rgb: var(--section-rgb);
   position: relative;
@@ -221,19 +221,22 @@
   background: linear-gradient(180deg, rgb(var(--section-rgb)), rgba(var(--section-rgb), 0.05));
 }
 
-/* Цвет по порядку — если форма его не задала. */
-.admin-section:not([data-tone]):nth-of-type(6n + 2) { --section-rgb: 45, 212, 191; }
-.admin-section:not([data-tone]):nth-of-type(6n + 3) { --section-rgb: 167, 139, 250; }
-.admin-section:not([data-tone]):nth-of-type(6n + 4) { --section-rgb: 244, 114, 182; }
-.admin-section:not([data-tone]):nth-of-type(6n + 5) { --section-rgb: 96, 165, 250; }
-.admin-section:not([data-tone]):nth-of-type(6n + 6) { --section-rgb: 245, 165, 36; }
+/* Палитра — тёплые сине-красные оттенки вокруг фиолетового акцента
+   админки: indigo → violet → purple → magenta → rose → red (правка
+   владельца 2026-09-26: «цвета слишком разные, фиолетовый основной и от
+   него расходится»). Без tone цвет берётся по порядку секций. */
+.admin-section:not([data-tone]):nth-of-type(6n + 2) { --section-rgb: 168, 85, 247; }
+.admin-section:not([data-tone]):nth-of-type(6n + 3) { --section-rgb: 217, 70, 239; }
+.admin-section:not([data-tone]):nth-of-type(6n + 4) { --section-rgb: 236, 72, 153; }
+.admin-section:not([data-tone]):nth-of-type(6n + 5) { --section-rgb: 244, 63, 94; }
+.admin-section:not([data-tone]):nth-of-type(6n + 6) { --section-rgb: 99, 102, 241; }
 
-.admin-section[data-tone="orange"] { --section-rgb: 255, 106, 61; }
-.admin-section[data-tone="teal"] { --section-rgb: 45, 212, 191; }
-.admin-section[data-tone="violet"] { --section-rgb: 167, 139, 250; }
-.admin-section[data-tone="pink"] { --section-rgb: 244, 114, 182; }
-.admin-section[data-tone="blue"] { --section-rgb: 96, 165, 250; }
-.admin-section[data-tone="gold"] { --section-rgb: 245, 165, 36; }
+.admin-section[data-tone="violet"] { --section-rgb: 139, 92, 246; }
+.admin-section[data-tone="purple"] { --section-rgb: 168, 85, 247; }
+.admin-section[data-tone="magenta"] { --section-rgb: 217, 70, 239; }
+.admin-section[data-tone="rose"] { --section-rgb: 236, 72, 153; }
+.admin-section[data-tone="red"] { --section-rgb: 244, 63, 94; }
+.admin-section[data-tone="indigo"] { --section-rgb: 99, 102, 241; }
 
 .admin-section-head {
   display: flex;
@@ -328,6 +331,16 @@ details.admin-section[open] > summary.admin-section-head::before {
 .admin-section .form-control:focus,
 .admin-section .form-select:focus {
   background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Оригинал во вкладке «Перевод» — только для чтения: тише полей ввода,
+   без серой заливки бутстрапа. */
+.admin-section .form-control:disabled,
+.admin-section .translation-line-source {
+  background-color: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: var(--bs-secondary-color);
+  opacity: 1;
 }
 
 /* Дропзоны внутри секции — тоже утоплены, с пунктиром цвета секции. */
