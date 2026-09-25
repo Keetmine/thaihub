@@ -118,12 +118,24 @@ async function main() {
     return agencyByName.get(c) ?? agencyByName.get(c.replace(/\s*(tv|entertainment|studio)$/i, "")) ?? null;
   };
 
+  // Построчный отчёт для владельца (просьба 2026-09-26: «прислать
+  // список актёров, которым меняем инфу: ник, полное имя, что добавили»).
+  type ReportRow = { nick: string; realName: string; isNew: boolean; added: string[]; skipped?: string };
+  const report: ReportRow[] = [];
+  const FIELD_RU: Record<string, string> = {
+    realName: "полное имя", birthDate: "дата рождения", height: "рост", weight: "вес",
+    bloodType: "группа крови", mbti: "MBTI", placeOfBirth: "место рождения",
+    nationality: "гражданство", alsoKnownAs: "тайское написание", photoUrl: "фото",
+    signatureUrl: "автограф",
+  };
+
   const stat = { updated: 0, created: 0, skipped: 0, factsWritten: 0, factsRejected: 0, fields: 0, links: 0, photos: 0, signatures: 0, agencies: 0 };
 
   for (const p of people) {
     const key = kpPersonKey(p);
     if (p.match === "ambiguous") {
       stat.skipped++;
+      report.push({ nick: p.stageName ?? "", realName: p.birthName ?? "", isNew: false, added: [], skipped: `спорное: ${p.candidates.join(", ")}` });
       continue;
     }
     let id = p.performerId;
@@ -132,6 +144,7 @@ async function main() {
     if (!id) {
       if (p.candidates.length > 0 || !p.stageName) {
         stat.skipped++;
+        report.push({ nick: p.stageName ?? "", realName: p.birthName ?? "", isNew: true, added: [], skipped: `похож на: ${p.candidates.join("; ")}` });
         continue;
       }
       if (ONLY_FACTS) continue;
@@ -159,12 +172,13 @@ async function main() {
         })
       : null;
 
+    const added: string[] = [];
     // --- поля: только в пустое ---
     if (!ONLY_FACTS) {
       const data: Record<string, unknown> = {};
       const e = existing;
       const setIf = (field: string, empty: boolean, value: unknown) => {
-        if (empty && value != null && value !== "") { data[field] = value; stat.fields++; }
+        if (empty && value != null && value !== "") { data[field] = value; stat.fields++; added.push(FIELD_RU[field] ?? field); }
       };
       setIf("realName", !e?.realName, p.birthName);
       setIf("birthDate", !e?.birthDate, p.birthDate ? new Date(`${p.birthDate}T00:00:00Z`) : null);
@@ -181,15 +195,15 @@ async function main() {
       if (APPLY) {
         if (!e?.photoUrl && p.photoUrl) {
           const local = await downloadRemoteImage(p.photoUrl, "kprofiles");
-          if (local && !/^https?:/i.test(local)) { data.photoUrl = local; stat.photos++; }
+          if (local && !/^https?:/i.test(local)) { data.photoUrl = local; stat.photos++; added.push("фото"); }
         }
         if (!e?.signatureUrl && p.signatureUrl) {
           const local = await downloadRemoteImage(p.signatureUrl, "signatures");
-          if (local && !/^https?:/i.test(local)) { data.signatureUrl = local; stat.signatures++; }
+          if (local && !/^https?:/i.test(local)) { data.signatureUrl = local; stat.signatures++; added.push("автограф"); }
         }
       } else {
-        if (!e?.photoUrl && p.photoUrl) stat.photos++;
-        if (!e?.signatureUrl && p.signatureUrl) stat.signatures++;
+        if (!e?.photoUrl && p.photoUrl) { stat.photos++; added.push("фото"); }
+        if (!e?.signatureUrl && p.signatureUrl) { stat.signatures++; added.push("автограф"); }
       }
       data.kprofilesUrl = p.sourceUrl;
       if (APPLY) await prisma.performer.update({ where: { id }, data });
@@ -203,6 +217,7 @@ async function main() {
         have.add(platform);
         if (APPLY) await prisma.performerLink.create({ data: { performerId: id, label: SOCIAL_PLATFORM_LABELS[platform], url } });
         stat.links++;
+        added.push(SOCIAL_PLATFORM_LABELS[platform]);
       }
 
       // --- агентство: только если у карточки ни одного ---
@@ -210,6 +225,7 @@ async function main() {
       if (agencyId && (e?.agencies.length ?? 0) === 0) {
         if (APPLY) await prisma.performerAgency.create({ data: { performerId: id, agencyId } });
         stat.agencies++;
+        added.push("агентство");
       }
     }
 
@@ -241,11 +257,30 @@ async function main() {
             writeFileSync(`${FACTS_DONE}/${encodeURIComponent(key)}.json`, JSON.stringify(item));
           }
           stat.factsWritten++;
+          added.push(`факты: ${item.en.length}${(existing?.trivia.length ?? 0) > 0 ? ` (слиты с нашими ${existing!.trivia.length})` : ""}`);
         }
       }
     }
     if (existing || APPLY) stat.updated++;
+    report.push({ nick: p.stageName ?? "", realName: p.birthName ?? "", isNew: !p.performerId, added });
   }
+
+  // Отчёт — markdown-таблица: новые, обновлённые, отложенные.
+  const cell = (v: string) => v.replace(/\|/g, "/");
+  const lines = [
+    `# kprofiles: что меняется у артистов${APPLY ? "" : " (сухой прогон)"}`,
+    "",
+    `Обновлено ${report.filter((r) => !r.isNew && !r.skipped && r.added.length).length}, заведено ${report.filter((r) => r.isNew && !r.skipped).length}, отложено ${report.filter((r) => r.skipped).length}, без изменений ${report.filter((r) => !r.skipped && !r.added.length).length}.`,
+    "",
+    "| Ник | Полное имя | Карточка | Что добавляется |",
+    "|---|---|---|---|",
+    ...report
+      .filter((r) => r.skipped || r.added.length)
+      .sort((a, b) => Number(!!a.skipped) - Number(!!b.skipped) || Number(b.isNew) - Number(a.isNew) || a.nick.localeCompare(b.nick))
+      .map((r) => `| ${cell(r.nick)} | ${cell(r.realName)} | ${r.skipped ? "отложена" : r.isNew ? "новая" : "есть"} | ${cell(r.skipped ?? [...new Set(r.added)].join(", "))} |`),
+  ];
+  writeFileSync("tmp/kprofiles/report.md", lines.join("\n") + "\n");
+  console.log("\nотчёт по артистам → tmp/kprofiles/report.md");
 
   console.log(
     `\nобновлено карточек ${stat.updated}, заведено ${stat.created}, пропущено (спорные) ${stat.skipped}\n` +
