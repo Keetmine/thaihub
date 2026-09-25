@@ -227,6 +227,17 @@ model Performer {
   soloDebut     String?
   height        String?
   weight        String?
+  // Группа крови, MBTI и подпись — из профилей kprofiles.com (решение
+  // владельца 2026-09-26: «заводим все три»). В тайском и корейском
+  // фандоме это привычные поля карточки, как рост и вес. Подпись —
+  // картинка автографа с их страницы, у единиц (9 из 216).
+  bloodType     String?
+  mbti          String?
+  signatureUrl  String?
+  // Откуда взяты факты и поля — только для себя: на витрине ссылки нет
+  // (решение владельца там же). Не уникально: участники группы делят
+  // одну страницу.
+  kprofilesUrl  String?
   // «Music video appearances» — просто текстом, без ссылок.
   mvAppearances String[] @default([])
   trivia        String[] @default([])
