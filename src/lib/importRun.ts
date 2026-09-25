@@ -60,8 +60,12 @@ export async function logImportRun<T>(
   kind: string,
   fn: (runId: string) => Promise<T>,
   summarize: (result: T) => string,
+  /** Сразу после заведения записи — для фоновых запусков, которым id
+   *  нужен раньше конца прогона (окно прогресса на странице артиста). */
+  onStarted?: (runId: string) => void,
 ): Promise<T | null> {
   const run = await prisma.importRun.create({ data: { kind } });
+  onStarted?.(run.id);
   try {
     const result = await fn(run.id);
     await prisma.importRun.update({

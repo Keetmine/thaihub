@@ -782,3 +782,69 @@ details.admin-section[open] > summary.admin-section-head::before {
   line-height: 1.35rem;
   text-align: center;
 }
+
+/* ---------- Окно «Обновить инфу» с MyDramaList (MdlRefreshButton) ---------- */
+/* Пока идёт импорт, окно не закрывается: лог шагов, время, «Остановить». */
+.mdl-refresh-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+}
+
+.mdl-refresh-status.is-failed {
+  color: var(--bs-danger);
+}
+
+.mdl-refresh-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--accent-rgb), 0.25);
+  border-top-color: rgb(var(--accent-rgb));
+  animation: mdl-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes mdl-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mdl-refresh-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+.mdl-refresh-log {
+  max-height: 14rem;
+  overflow-y: auto;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem 0.6rem 2rem;
+  border-radius: var(--bs-border-radius);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--bs-secondary-color);
+}
+
+.mdl-refresh-log li.is-current {
+  color: var(--bs-body-color);
+}
+
+.mdl-refresh-ask {
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--bs-border-radius);
+  border: 1px solid rgba(var(--bs-danger-rgb, 255, 93, 108), 0.35);
+  background: rgba(255, 93, 108, 0.06);
+}
+
+/* Колонка фото в форме артиста — ровно по ширине рамки фото (14rem у
+   .file-dropzone-large), поля забирают остальное. */
+@media (min-width: 768px) {
+  .performer-photo-col {
+    width: 14rem;
+  }
+}

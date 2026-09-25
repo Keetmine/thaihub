@@ -10,7 +10,7 @@ import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
 import { rankedPerformerSearch } from "@/lib/performerSearch";
 import { realignTranslations } from "@/lib/entityTranslations";
-import { runMdlPerformerImport } from "../imports/actions";
+import { launchMdlPerformerImport } from "@/lib/mdlPerformerRun";
 
 
 
@@ -598,20 +598,30 @@ export async function updatePerformer(id: string, formData: FormData) {
 export async function refreshPerformerFromMdl(
   performerId: string,
   url: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; runId: string } | { ok: false; error: string }> {
   await requireCatalogEditor();
   const clean = url.trim();
   if (!/^https?:\/\/(www\.)?mydramalist\.com\/people\//i.test(clean)) {
     return { ok: false, error: "Нужна ссылка на профиль человека: https://mydramalist.com/people/…" };
   }
-  const formData = new FormData();
-  formData.set("mdlUrl", clean);
-  formData.set("performerId", performerId);
-  formData.set("withFilmography", "on");
   try {
-    await runMdlPerformerImport(formData);
+    const runId = await launchMdlPerformerImport({ url: clean, performerId, withFilmography: true });
+    revalidatePath("/admin/imports");
+    return { ok: true, runId };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
-  return { ok: true };
+}
+
+/** Состояние прогона для окна прогресса «Обновить инфу»: статус и
+ *  последняя строка хода (или итоговая сводка). */
+export async function getImportRunState(
+  runId: string,
+): Promise<{ status: string; summary: string | null; startedAt: string; cancelRequested: boolean } | null> {
+  await requireCatalogEditor();
+  const run = await prisma.importRun.findUnique({
+    where: { id: runId },
+    select: { status: true, summary: true, startedAt: true, cancelRequested: true },
+  });
+  return run ? { ...run, startedAt: run.startedAt.toISOString() } : null;
 }

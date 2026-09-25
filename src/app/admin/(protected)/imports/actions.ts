@@ -9,7 +9,7 @@ import { parseFandomTarget } from "@/lib/fandomWiki";
 import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
 import { logImportRun, isImportCancelledError } from "@/lib/importRun";
 import { resolveChannelInput, parseChannelHandle } from "@/lib/youtubeMusic";
-import { importMdlPerformer } from "@/lib/mdlPerformerImport";
+import { launchMdlPerformerImport } from "@/lib/mdlPerformerRun";
 import { mdlIdFromUrl } from "@/lib/mydramalist";
 import { upsertDramaFromMdl, summarizeSchedule } from "@/lib/mdlDramaImport";
 import { linkMdlCast } from "@/lib/mdlCastLink";
@@ -196,26 +196,7 @@ export async function runMdlPerformerImport(formData: FormData): Promise<void> {
   // В фоне: с галочкой «разобрать фильмографию» прогон открывает до
   // 25 страниц сериалов, форма не должна этого ждать. Ход и кнопка
   // «Остановить» — в журнале импортов.
-  void (async () => {
-    await logImportRun(
-      "mdl-performer",
-      (runId) => importMdlPerformer(url, performerId, runId, { withFilmography }),
-      (r) =>
-        `${r.name}: ${r.created ? "создан" : "обновлён"}` +
-        (r.filled.length ? `, заполнено — ${r.filled.join(", ")}` : ", новых полей нет") +
-        (r.linksAdded ? `, ссылок +${r.linksAdded}` : "") +
-        (r.linkConflicts
-          ? `, сеть занята у ${r.linkConflicts} ссыл. (у артиста другой хендл — проверьте руками)`
-          : "") +
-        (r.dramasLinked ? `, привязано сериалов ${r.dramasLinked}` : "") +
-        (r.dramasCreated ? `, заведено сериалов ${r.dramasCreated}` : "") +
-        (r.dramasEnriched ? `, дозаполнено сериалов ${r.dramasEnriched}` : "") +
-        (r.dramasFailed ? `, не открылось ${r.dramasFailed}` : "") +
-        (r.dramasSkipped ? ` (${r.dramasSkipped} нет в каталоге)` : ""),
-    ).catch(() => {
-      // Падение уже записано в журнал самим logImportRun.
-    });
-  })();
+  await launchMdlPerformerImport({ url, performerId, withFilmography });
 
   revalidatePath("/admin/imports");
   revalidatePath("/admin/performers");

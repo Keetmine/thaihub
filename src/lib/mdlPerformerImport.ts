@@ -49,10 +49,16 @@ export async function importMdlPerformer(
     /** Галочка «парсить фильмографию»: заводить недостающие сериалы и
      *  дозаполнять существующие (только карточка, без каста). */
     withFilmography?: boolean;
+    /** Ход прогона — строка для журнала и окна прогресса на странице
+     *  артиста (кнопка «Обновить инфу»). */
+    onProgress?: (message: string) => void;
   },
 ): Promise<MdlPerformerSummary> {
   const withFilmography = options?.withFilmography ?? false;
+  const progress = options?.onProgress ?? (() => {});
+  progress("Открываем профиль на MyDramaList…");
   const person: MdlPerson = await fetchMdlPerson(url.trim());
+  progress(`Профиль ${person.name} загружен — заполняем карточку`);
 
   const existing = performerId
     ? await prisma.performer.findUnique({
@@ -166,6 +172,7 @@ export async function importMdlPerformer(
   );
   let linksAdded = 0;
   let linkConflicts = 0;
+  if (person.socialLinks.length) progress("Сверяем соцсети");
   for (const link of person.socialLinks) {
     // Остановка по кнопке: карточка уже заведена и остаётся такой, как
     // получилось, — повторный импорт того же адреса её дозаполнит.
@@ -229,8 +236,9 @@ export async function importMdlPerformer(
   const DRAMA_LIMIT = 25;
   const dramaStaleBefore = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  for (const row of person.filmography) {
+  for (const [index, row] of person.filmography.entries()) {
     await checkImportCancelled(runId ?? null);
+    progress(`Сериалы: ${index + 1} из ${person.filmography.length} — ${row.title}`);
     const mdlUrl = absMdlUrl(row.mdlPath);
     let drama = await prisma.drama.findFirst({
       where: {

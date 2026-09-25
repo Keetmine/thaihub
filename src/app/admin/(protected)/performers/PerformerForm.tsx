@@ -330,7 +330,9 @@ export default function PerformerForm({
             О себе. Тип при создании задан разделом и не показывается. */}
         <FormSection title="Основное" icon={<UserIcon />} tone="violet">
         <div className="row g-3">
-          <div className="col-12 col-md-8 col-lg-9">
+          {/* Поля — всё, что осталось от фото: колонка фото ровно по его
+              ширине, без пустоты справа (правка владельца 2026-09-26). */}
+          <div className="col-12 col-md">
             <div className="row g-2">
               <div className={isCreating ? "col-12" : "col-12 col-lg-8"}>
                 <label className="form-label" htmlFor="performer-form-name">
@@ -458,7 +460,7 @@ export default function PerformerForm({
           </div>
 
           {/* Фото — небольшое, с кадрированием. */}
-          <div className="col-12 col-md-4 col-lg-3">
+          <div className="col-12 col-md-auto performer-photo-col">
             <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} large recrop />
           </div>
         </div>
