@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { pairingLabel } from "@/lib/pairingLabel";
+import { useRef, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import TimeInput from "@/components/TimeInput";
 import EntitySelect, { OpenEntityLink } from "@/components/EntitySelect";
@@ -18,12 +17,6 @@ import DatePickerInput from "@/components/DatePickerInput";
 import { adminEntityHref } from "@/app/admin/entityHref";
 
 
-type PairingOption = {
-  id: string;
-  name: string | null;
-  performerA: { id: string; name: string; photoUrl?: string | null };
-  performerB: { id: string; name: string; photoUrl?: string | null };
-};
 
 /** Строка лайнапа дня: кто выступает и когда. Время держим строкой, как
  *  на афише («16:00-16:45», иногда «TBA»), — фестивали пишут слоты, а не
@@ -50,7 +43,6 @@ const EMPTY_OCCURRENCE: OccurrenceRow = { id: "", date: "", startTime: "", endTi
 export default function EventForm({
   action,
   performers,
-  pairings,
   dramas,
   locations,
   defaultValues,
@@ -58,7 +50,6 @@ export default function EventForm({
 }: {
   action: (formData: FormData) => void;
   performers: EntityOption[];
-  pairings: PairingOption[];
   dramas: EntityOption[];
   locations: EntityOption[];
   defaultValues?: {
@@ -75,7 +66,6 @@ export default function EventForm({
     description: string;
     occurrences: OccurrenceRow[];
     performerIds: string[];
-    pairingIds: string[];
     dramaId: string;
     locationId: string;
     presaleDate: string;
@@ -91,17 +81,6 @@ export default function EventForm({
 
   // У пейринга своей картинки нет — миниатюрой берём фото первого
   // участника, чтобы вид опции был тот же, что у остальных сущностей.
-  // Своей страницы в админке у пейрингов тоже нет, так что и ссылки
-  // «открыть» здесь не будет (adminEntityHref вернул бы null).
-  const pairingOptions: EntityOption[] = useMemo(
-    () =>
-      pairings.map((p) => ({
-        id: p.id,
-        name: pairingLabel(p),
-        photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl ?? null,
-      })),
-    [pairings],
-  );
 
   const formRef = useRef<HTMLFormElement>(null);
   const { dirty } = useUnsavedGuard(formRef);
@@ -460,16 +439,6 @@ export default function EventForm({
         />
       </div>
 
-      <div>
-        <label className="form-label d-block" htmlFor="event-form-pairingIds">Пейринги</label>
-        <EntityMultiSelect id="event-form-pairingIds"
-          name="pairingIds"
-          options={pairingOptions}
-          defaultSelectedIds={v?.pairingIds}
-          placeholder="Начните вводить название пейринга…"
-          emptyMessage="Нет добавленных пейрингов. Создайте их на странице «Пейринги»."
-        />
-      </div>
 
       </FormSection>
 

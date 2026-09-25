@@ -65,10 +65,8 @@ export default function PerformerForm({
   events,
   defaultValues,
   defaultMemberIds,
-  pairingOptions,
   mascotOwnerOptions,
   defaultMascotPerformerIds,
-  defaultMascotPairingIds,
   defaultDramaIds,
   defaultEventIds,
   currentPairings,
@@ -112,10 +110,8 @@ export default function PerformerForm({
   defaultMemberIds?: string[];
   /** Маскоты: варианты пейрингов (список короткий, грузится целиком) и
    *  уже привязанные владельцы (актёры/пейринги) для режима MASCOT. */
-  pairingOptions?: EntityOption[];
   mascotOwnerOptions?: EntityOption[];
   defaultMascotPerformerIds?: string[];
-  defaultMascotPairingIds?: string[];
   defaultDramaIds?: string[];
   defaultEventIds?: string[];
   /** Existing pairings this performer is part of — edit mode only. */
@@ -460,16 +456,6 @@ export default function PerformerForm({
                 placeholder="Начните вводить имя актёра…"
                 hrefKind="Performer"
                 searchOptions={searchMascotOwnerOptions}
-              />
-            </div>
-            <div className="col-12">
-              <label className="form-label d-block" htmlFor="performer-form-mascotPairingIds">Чей маскот — пейринги</label>
-              <EntityMultiSelect id="performer-form-mascotPairingIds"
-                name="mascotPairingIds"
-                options={pairingOptions ?? []}
-                defaultSelectedIds={defaultMascotPairingIds}
-                placeholder="Начните вводить название пейринга…"
-                emptyMessage="Пейринги создаются в разделе «Пейринги»."
               />
             </div>
           </div>

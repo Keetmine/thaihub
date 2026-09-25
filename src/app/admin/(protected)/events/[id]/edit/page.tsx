@@ -25,30 +25,23 @@ export default async function EditEventPage({
   // Полный каталог исполнителей в форму больше не грузим (~17 тыс. строк
   // подвешивали селект) — комбобокс ищет асинхронно, а как options нужны
   // только уже привязанные к событию.
-  const [event, pairings] = await Promise.all([
-    prisma.event.findUnique({
-      where: { id },
-      include: {
-        performers: { include: { performer: true } },
-        pairings: true,
-        occurrences: {
-          orderBy: { startsAt: "asc" },
-          include: {
-            lineup: {
-              include: { performer: { select: { id: true, name: true, realName: true, photoUrl: true } } },
-            },
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: {
+      performers: { include: { performer: true } },
+      occurrences: {
+        orderBy: { startsAt: "asc" },
+        include: {
+          lineup: {
+            include: { performer: { select: { id: true, name: true, realName: true, photoUrl: true } } },
           },
         },
-        drama: { select: { id: true, title: true, posterUrl: true } },
-        location: { select: { id: true, name: true, photoUrl: true } },
-        photos: { orderBy: { sort: "asc" } },
       },
-    }),
-    prisma.pairing.findMany({
-      include: { performerA: true, performerB: true },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+      drama: { select: { id: true, title: true, posterUrl: true } },
+      location: { select: { id: true, name: true, photoUrl: true } },
+      photos: { orderBy: { sort: "asc" } },
+    },
+  });
 
   if (!event) notFound();
 
@@ -95,7 +88,6 @@ export default async function EditEventPage({
               name: performerOptionLabel(p.performer),
               photoUrl: p.performer.photoUrl,
             }))}
-            pairings={pairings}
             dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
             locations={locations}
             submitLabel="Сохранить изменения"
@@ -121,7 +113,6 @@ export default async function EditEventPage({
                 })),
               })),
               performerIds: event.performers.map((p) => p.performerId),
-              pairingIds: event.pairings.map((p) => p.pairingId),
               dramaId: event.dramaId ?? "",
               locationId: event.locationId ?? "",
               presaleDate: event.presaleAt ? dateKey(event.presaleAt) : "",

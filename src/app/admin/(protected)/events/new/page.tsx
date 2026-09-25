@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import EventForm from "../EventForm";
 import { createEvent } from "../actions";
 
@@ -8,11 +7,6 @@ export const dynamic = "force-dynamic";
 export default async function NewEventPage() {
   // Каталоги (исполнители/сериалы/локации) не грузим — комбобоксы формы
   // ищут асинхронно (searchOptions).
-  const pairings = await prisma.pairing.findMany({
-    include: { performerA: true, performerB: true },
-    orderBy: { createdAt: "desc" },
-  });
-
   return (
     <div>
       <Link href="/admin/events" className="eyebrow text-decoration-none">
@@ -24,7 +18,6 @@ export default async function NewEventPage() {
       <EventForm
         action={createEvent}
         performers={[]}
-        pairings={pairings}
         dramas={[]}
         locations={[]}
         submitLabel="Создать событие"

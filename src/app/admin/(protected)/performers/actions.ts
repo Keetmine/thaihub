@@ -72,9 +72,6 @@ async function getMascotOwnerData(formData: FormData, selfId?: string) {
   const rawPerformerIds = Array.from(
     new Set(formData.getAll("mascotPerformerIds").map(String).filter(Boolean)),
   );
-  const pairingIds = Array.from(
-    new Set(formData.getAll("mascotPairingIds").map(String).filter(Boolean)),
-  );
   // Владельцем может быть актёр или группа — но не маскот и не сам
   // маскот-о-себе: пикер это и так не предлагает, серверный фильтр —
   // на случай прямого POST или устаревшей формы.
@@ -86,10 +83,10 @@ async function getMascotOwnerData(formData: FormData, selfId?: string) {
         })
       : [];
   const performerIds = owners.map((o) => o.id).filter((id) => id !== selfId);
-  return [
-    ...performerIds.map((performerId) => ({ performerId })),
-    ...pairingIds.map((pairingId) => ({ pairingId })),
-  ];
+  // Владелец маскота — только артист или группа: выбор пейринга убран
+  // из админки (правка владельца 2026-09-25), а привязок через пейринг
+  // в базе не было ни одной.
+  return performerIds.map((performerId) => ({ performerId }));
 }
 
 async function createPerformerRecord(name: string, type: string) {

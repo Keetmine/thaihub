@@ -14,9 +14,6 @@ function getPerformerIds(formData: FormData): string[] {
   return formData.getAll("performerIds").map(String).filter(Boolean);
 }
 
-function getPairingIds(formData: FormData): string[] {
-  return formData.getAll("pairingIds").map(String).filter(Boolean);
-}
 
 /** Список строк из одного поля через запятую — та же манера, что у
  *  жанров/тегов сериала и новеллы. */
@@ -168,7 +165,6 @@ export async function createEvent(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const occurrences = getOccurrenceInputs(formData);
   const performerIds = getPerformerIds(formData);
-  const pairingIds = getPairingIds(formData);
   const dramaId = String(formData.get("dramaId") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
   const ticketPrice = String(formData.get("ticketPrice") ?? "").trim();
@@ -213,9 +209,6 @@ export async function createEvent(formData: FormData) {
       },
       performers: {
         create: performerIds.map((performerId) => ({ performerId })),
-      },
-      pairings: {
-        create: pairingIds.map((pairingId) => ({ pairingId })),
       },
       photos: { create: getEventPhotoInputs(formData) },
     },
@@ -317,7 +310,6 @@ export async function updateEvent(id: string, formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const occurrences = getOccurrenceInputs(formData);
   const performerIds = getPerformerIds(formData);
-  const pairingIds = getPairingIds(formData);
   const dramaId = String(formData.get("dramaId") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
   const ticketPrice = String(formData.get("ticketPrice") ?? "").trim();
@@ -352,7 +344,6 @@ export async function updateEvent(id: string, formData: FormData) {
 
   await prisma.$transaction(async (tx) => {
     await tx.eventPerformer.deleteMany({ where: { eventId: id } });
-    await tx.eventPairing.deleteMany({ where: { eventId: id } });
     // Фото пересобираются целиком из присланного (Ж9) — как связи выше.
     await tx.eventPhoto.deleteMany({ where: { eventId: id } });
     await syncOccurrences(tx, id, occurrences);
@@ -374,9 +365,6 @@ export async function updateEvent(id: string, formData: FormData) {
         presaleUrl,
         performers: {
           create: performerIds.map((performerId) => ({ performerId })),
-        },
-        pairings: {
-          create: pairingIds.map((pairingId) => ({ pairingId })),
         },
         photos: { create: getEventPhotoInputs(formData) },
       },

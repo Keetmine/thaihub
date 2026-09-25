@@ -28,7 +28,7 @@ export default async function EditPerformerPage({
   // Тяжёлые каталоги в комбобоксы не грузятся (searchOptions ищет на
   // сервере) — передаются только уже связанные записи, чтобы селекты
   // могли показать текущий выбор.
-  const [performer, agencies, pairings, allPairings] = await Promise.all([
+  const [performer, agencies, pairings] = await Promise.all([
     prisma.performer.findUnique({
       where: { id },
       include: {
@@ -46,7 +46,6 @@ export default async function EditPerformerPage({
         mascotOwners: {
           select: {
             performerId: true,
-            pairingId: true,
             performer: { select: { id: true, name: true, realName: true, photoUrl: true } },
           },
         },
@@ -60,11 +59,6 @@ export default async function EditPerformerPage({
       where: { OR: [{ performerAId: id }, { performerBId: id }] },
       include: { performerA: true, performerB: true },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    }),
-    // все пейринги — для привязки маскота (список короткий)
-    prisma.pairing.findMany({
-      include: { performerA: true, performerB: true },
-      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -124,13 +118,6 @@ export default async function EditPerformerPage({
             name: performerOptionLabel(m.performer),
             photoUrl: m.performer.photoUrl,
           }))}
-          pairingOptions={allPairings.map((p) => ({
-            id: p.id,
-            name: pairingLabel(p),
-            // Своей картинки у пейринга нет — миниатюрой берём фото
-            // первого участника (вид опции един для всех сущностей).
-            photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl,
-          }))}
           mascotOwnerOptions={performer.mascotOwners
             .filter((o) => o.performer)
             .map((o) => ({
@@ -140,9 +127,6 @@ export default async function EditPerformerPage({
             }))}
           defaultMascotPerformerIds={performer.mascotOwners
             .map((o) => o.performerId)
-            .filter((x): x is string => !!x)}
-          defaultMascotPairingIds={performer.mascotOwners
-            .map((o) => o.pairingId)
             .filter((x): x is string => !!x)}
           agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
           dramas={performer.dramas.map((pd) => ({

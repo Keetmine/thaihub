@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { pairingLabel } from "@/lib/pairingLabel";
 import { prisma } from "@/lib/prisma";
 import PerformerForm from "../PerformerForm";
 import { createPerformer } from "../actions";
@@ -9,17 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function NewPerformerPage() {
   // Тяжёлые каталоги (исполнители/сериалы/события) в комбобоксы не
   // грузятся — они ищутся на сервере по мере ввода (searchOptions).
-  const [agencies, pairings] = await Promise.all([
-    prisma.agency.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, logoUrl: true },
-    }),
-    // для привязки маскота к пейрингу — список короткий, грузим целиком
-    prisma.pairing.findMany({
-      include: { performerA: true, performerB: true },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  const agencies = await prisma.agency.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, logoUrl: true },
+  });
 
   return (
     <div>
@@ -34,12 +26,6 @@ export default async function NewPerformerPage() {
         action={createPerformer}
         submitLabel="Создать исполнителя"
         soloPerformers={[]}
-        pairingOptions={pairings.map((p) => ({
-          id: p.id,
-          name: pairingLabel(p),
-          // Картинки у пейринга нет — берём фото первого участника.
-          photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl,
-        }))}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
         dramas={[]}
         events={[]}

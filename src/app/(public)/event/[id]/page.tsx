@@ -1,5 +1,4 @@
 import ReviewsAndComments from "@/components/ReviewsAndComments";
-import { pairingNames } from "@/lib/pairingLabel";
 import { translatedText } from "@/lib/entityTranslations";
 import SourcesBlock from "@/components/SourcesBlock";
 import AppLink from "@/components/AppLink";
@@ -67,7 +66,6 @@ const getEvent = cache(async (rawId: string) =>
           },
         },
       },
-      pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
       drama: true,
       // Встреча сообщества (АА25): по ней страница решает, кого сюда
       // пускать и что писать в шапке. У афишного события тут null.
@@ -779,20 +777,6 @@ export default async function EventDetailPage({
                     </span>
                   ))}
                 </CastGrid>
-                {event.pairings.length > 0 && (
-                  <div className="d-flex flex-wrap gap-2 mt-2">
-                    {/* АА3: сначала кто в паре, имя пейринга — тихой
-                        добавкой. Одно имя вместо людей не читалось. */}
-                    {event.pairings.map(({ pairing }) => (
-                      <span key={pairing.id} className="event-chip">
-                        {pairingNames(pairing)}
-                        {pairing.name && (
-                          <span className="small text-secondary"> · {pairing.name}</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
